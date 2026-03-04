@@ -1,19 +1,25 @@
-# Build stage
-FROM node:18-alpine AS build
+# ═══════════════════════════════════════════════════════════
+#  Driftlock Frontend Builder
+#
+#  Builds the React app, then copies output into /app/dist
+#  which is the volume mount point shared with nginx.
+#
+#  The build happens in a temp dir so the volume mount at
+#  /app/dist doesn't overlay the build output.
+# ═══════════════════════════════════════════════════════════
 
-WORKDIR /app
+FROM node:18-alpine
 
-COPY package.json ./
-RUN npm install
+WORKDIR /build
 
+# Install dependencies first (Docker layer caching)
+COPY package.json package-lock.json* ./
+RUN npm ci --prefer-offline 2>/dev/null || npm install
+
+# Copy source and build to /build/dist (NOT /app/dist)
 COPY . .
 RUN npm run build
 
-# Production stage
-FROM nginx:1.25-alpine
-
-COPY --from=build /app/dist /usr/share/nginx/html
-
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+# At runtime, copy the pre-built files into the mounted volume
+# /app/dist is where the frontend_build volume is mounted
+CMD ["sh", "-c", "cp -r /build/dist/* /app/dist/ 2>/dev/null || cp -r /build/dist/. /app/dist/ && echo 'Frontend build copied to volume'"]

@@ -9,6 +9,8 @@ services:
       - certbot_certs:/etc/letsencrypt:ro
       - certbot_webroot:/var/www/certbot:ro
       - frontend_build:/usr/share/nginx/html:ro
+    environment:
+      - DOMAIN=${DOMAIN:-localhost}
     depends_on:
       - backend
     restart: unless-stopped
