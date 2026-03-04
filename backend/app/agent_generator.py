@@ -4,8 +4,8 @@ import uuid
 from pathlib import Path
 from typing import Literal
 
-TEMPLATES_DIR = Path(__file__).parent.parent.parent / "agent-builder" / "templates"
-DIST_DIR = Path(os.getenv("AGENT_BUILD_DIR", str(Path(__file__).parent.parent.parent / "agent-builder" / "dist")))
+TEMPLATES_DIR = Path(__file__).parent.parent / "agent-builder" / "templates"
+DIST_DIR = Path(os.getenv("AGENT_BUILD_DIR", str(Path(__file__).parent.parent / "agent-builder" / "dist")))
 
 Platform = Literal["linux", "raspberry-pi", "windows-ps1", "windows-exe"]
 

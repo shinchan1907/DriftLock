@@ -59,7 +59,13 @@ run_check() {
     mkdir -p "$(dirname "$log_file")"
     
     local current_ip
-    current_ip=$(detect_ip)
+    
+    if [[ -n "${SERVICE_PORT:-}" ]]; then
+        if ! timeout 2 bash -c "true > /dev/tcp/127.0.0.1/${SERVICE_PORT}" 2>/dev/null; then
+            echo "$(date '+%Y-%m-%d %H:%M:%S') [WARN] Internal service on port ${SERVICE_PORT} is down. Skipping update." >> "$log_file"
+            return
+        fi
+    fi
     
     if [[ -z "$current_ip" ]]; then
         echo "$(date '+%Y-%m-%d %H:%M:%S') [ERROR] Could not detect public IP" >> "$log_file"

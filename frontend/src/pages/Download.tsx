@@ -144,14 +144,20 @@ const Download: React.FC = () => {
                         </h4>
                         <div className="space-y-4">
                             <div>
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Windows (Admin)</p>
+                                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Direct Download Link (Browser/Curl)</p>
                                 <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 relative group">
                                     <code className="text-[10px] text-blue-400 break-all">
-                                        powershell -ExecutionPolicy Bypass -File .\driftlock-agent.ps1
+                                        {window.location.origin}/api/agents/download?service_id={selectedService || 'ID'}&platform={platform}&query_token={localStorage.getItem('access_token')?.substring(0, 10)}...
                                     </code>
                                     <button
                                         onClick={() => {
-                                            navigator.clipboard.writeText('powershell -ExecutionPolicy Bypass -File .\\driftlock-agent.ps1');
+                                            if (!selectedService) {
+                                                alert('Please select a service first.');
+                                                return;
+                                            }
+                                            const token = localStorage.getItem('access_token');
+                                            const url = `${window.location.origin}/api/agents/download?service_id=${selectedService}&platform=${platform}&query_token=${token}`;
+                                            navigator.clipboard.writeText(url);
                                             setCopied(true);
                                             setTimeout(() => setCopied(false), 2000);
                                         }}
@@ -160,28 +166,41 @@ const Download: React.FC = () => {
                                         {copied ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
                                     </button>
                                 </div>
+                                <p className="mt-2 text-[10px] text-slate-600 italic">This link contains your private token. Use it to download from direct browser URL.</p>
                             </div>
-                            <div>
-                                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Linux (Root)</p>
-                                <div className="bg-slate-950 border border-slate-800 rounded-xl p-3">
-                                    <code className="text-[10px] text-emerald-400 break-all">
-                                        sudo bash driftlock-agent.sh
-                                    </code>
+
+                            {platform === 'windows-ps1' ? (
+                                <div>
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Windows (Admin PowerShell)</p>
+                                    <div className="bg-slate-950 border border-slate-800 rounded-xl p-3">
+                                        <code className="text-[10px] text-emerald-400 break-all">
+                                            powershell -ExecutionPolicy Bypass -File .\driftlock-agent.ps1
+                                        </code>
+                                    </div>
                                 </div>
-                            </div>
+                            ) : (
+                                <div>
+                                    <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Linux (Root Bash)</p>
+                                    <div className="bg-slate-950 border border-slate-800 rounded-xl p-3">
+                                        <code className="text-[10px] text-emerald-400 break-all">
+                                            sudo bash driftlock-agent.sh
+                                        </code>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
+                </div>
 
-                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-3xl p-8">
-                        <h4 className="text-lg font-bold text-amber-500 mb-4 flex items-center gap-2">
-                            <AlertTriangle className="w-5 h-5" />
-                            Security Note
-                        </h4>
-                        <p className="text-sm text-slate-400 leading-relaxed">
-                            Driftlock agents contain sensitive API keys. Never share agent files or publish them publicly.
-                            The agent requires administrator/root privileges to install background services and manage scheduled tasks.
-                        </p>
-                    </div>
+                <div className="bg-amber-500/10 border border-amber-500/20 rounded-3xl p-8">
+                    <h4 className="text-lg font-bold text-amber-500 mb-4 flex items-center gap-2">
+                        <AlertTriangle className="w-5 h-5" />
+                        Security Note
+                    </h4>
+                    <p className="text-sm text-slate-400 leading-relaxed">
+                        Driftlock agents contain sensitive API keys. Never share agent files or publish them publicly.
+                        The agent requires administrator/root privileges to install background services and manage scheduled tasks.
+                    </p>
                 </div>
             </div>
         </div>

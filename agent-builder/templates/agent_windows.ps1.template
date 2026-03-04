@@ -67,6 +67,14 @@ function Send-Update {
 }
 
 function Invoke-Check {
+    if ($SERVICE_PORT) {
+        $check = Test-NetConnection -ComputerName "127.0.0.1" -Port $SERVICE_PORT -InformationLevel Quiet
+        if (!$check) {
+            Write-Log WARN "Internal service on port $SERVICE_PORT is down. Skipping update."
+            return
+        }
+    }
+    
     $currentIp = Get-PublicIP
     if ([string]::IsNullOrWhiteSpace($currentIp)) {
         Write-Log ERROR "Could not detect public IP"
