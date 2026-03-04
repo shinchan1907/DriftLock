@@ -1,7 +1,7 @@
 #!/bin/bash
 set -euo pipefail
 
-# ── Config ────────────────────────────────────────────────
+# -- Config ------------------------------------------------
 DRIFTLOCK_SERVER="{{SERVER_URL}}"
 SERVICE_API_KEY="{{API_KEY}}"
 HOSTNAME_FULL="{{HOSTNAME}}"
@@ -147,7 +147,7 @@ EOF
     systemctl enable --now "driftlock-${SERVICE_NAME}.timer"
     systemctl enable --now "driftlock-${SERVICE_NAME}.service"
     
-    echo -e "${GREEN}✓ Driftlock Agent installed and started!${NC}"
+    echo -e "${GREEN}[OK] Driftlock Agent installed and started!${NC}"
     echo -e "Logs: journalctl -u driftlock-${SERVICE_NAME}"
 }
 

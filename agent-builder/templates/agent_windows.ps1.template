@@ -1,6 +1,7 @@
 #Requires -Version 5.1
+param([switch]$Daemon, [switch]$Check)
 
-# ── Config ────────────────────────────────────────────────
+# -- Config ------------------------------------------------
 $DRIFTLOCK_SERVER = "{{SERVER_URL}}"
 $SERVICE_API_KEY  = "{{API_KEY}}"
 $HOSTNAME_FULL    = "{{HOSTNAME}}"
@@ -11,7 +12,9 @@ $SERVICE_PORT     = "{{PORT}}"
 
 # Self-elevation
 if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]"Administrator")) {
-    $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+    $arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $PSCommandPath + '"'
+    if ($Daemon) { $arguments += " -Daemon" }
+    if ($Check) { $arguments += " -Check" }
     Start-Process PowerShell -ArgumentList $arguments -Verb RunAs
     exit
 }
@@ -20,7 +23,7 @@ $AppData = "$env:APPDATA\Driftlock\$SERVICE_NAME"
 $LogFile = "$AppData\agent.log"
 $LastIpFile = "$AppData\last_ip.txt"
 
-if (!(Test-Path $AppData)) { New-Item -Path $AppData -ItemType Directory -Force }
+if (!(Test-Path $AppData)) { New-Item -Path $AppData -ItemType Directory -Force | Out-Null }
 
 function Write-Log {
     param([string]$Level, [string]$Message)
@@ -98,13 +101,13 @@ function Invoke-Check {
 
 function Install-Agent {
     $InstallDir = "$env:ProgramFiles\Driftlock"
-    if (!(Test-Path $InstallDir)) { New-Item -Path $InstallDir -ItemType Directory -Force }
+    if (!(Test-Path $InstallDir)) { New-Item -Path $InstallDir -ItemType Directory -Force | Out-Null }
     
     $DestFile = "$InstallDir\driftlock-$SERVICE_NAME.ps1"
     Copy-Item -Path $PSCommandPath -Destination $DestFile -Force
     
     # Task Scheduler
-    $Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DestFile`" -Check"
+    $Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument ('-NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File "' + $DestFile + '" -Check')
     $Trigger1 = New-ScheduledTaskTrigger -AtStartup -RandomDelay (New-TimeSpan -Seconds 30)
     $Trigger2 = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Seconds $CHECK_INTERVAL)
     
@@ -113,10 +116,8 @@ function Install-Agent {
     
     Register-ScheduledTask -TaskName "DriftlockAgent-$SERVICE_NAME" -Action $Action -Trigger $Trigger1, $Trigger2 -Principal $Principal -Settings $Settings -Force
     
-    Write-Host "✓ Driftlock agent installed for $HOSTNAME_FULL" -ForegroundColor Green
+    Write-Host "[SUCCESS] Driftlock agent installed for $HOSTNAME_FULL" -ForegroundColor Green
 }
-
-param([switch]$Daemon, [switch]$Check)
 
 if ($Daemon) {
     while($true) {
