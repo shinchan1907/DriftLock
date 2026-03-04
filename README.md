@@ -13,7 +13,7 @@
 ### Self-hosted DDNS with a beautiful GUI. Your domain. Your server. Zero subscriptions.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Docker Pulls](https://img.shields.io/docker/pulls/driftlock/driftlock?color=blue&logo=docker)](https://hub.docker.com/r/driftlock/driftlock)
+[![Docker Pulls](https://img.shields.io/docker/pulls/shinchangupta/driftlock?color=blue&logo=docker)](https://hub.docker.com/r/shinchangupta/driftlock)
 [![GitHub Stars](https://img.shields.io/github/stars/shinchan1907/driftlock?style=social)](https://github.com/shinchan1907/driftlock)
 [![Last Commit](https://img.shields.io/github/last-commit/shinchan1907/driftlock)](https://github.com/shinchan1907/driftlock)
 [![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20Raspberry%20Pi-informational)](https://github.com/shinchan1907/driftlock)
