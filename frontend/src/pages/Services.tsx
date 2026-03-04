@@ -12,14 +12,19 @@ import {
     ChevronRight,
     Loader2,
     AlertCircle,
-    Server
+    Server,
+    Link2,
+    ToggleLeft,
+    ToggleRight
 } from 'lucide-react';
 import client from '../api/client';
 
 const Services: React.FC = () => {
     const [services, setServices] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [searchQuery, setSearchQuery] = useState('');
     const [showAddModal, setShowAddModal] = useState(false);
+    const [togglingTunnel, setTogglingTunnel] = useState<number | null>(null);
     const [zones, setZones] = useState<any[]>([]);
     const [newService, setNewService] = useState({
         name: '',
@@ -29,7 +34,9 @@ const Services: React.FC = () => {
         record_type: 'A',
         port: '',
         proxied: false,
-        check_interval: 300
+        check_interval: 300,
+        tunnel_mode: false,
+        local_service_url: ''
     });
 
     const fetchServices = async () => {
@@ -66,7 +73,18 @@ const Services: React.FC = () => {
                 ...newService,
                 port: newService.port ? parseInt(newService.port.toString()) : null
             };
-            await client.post('/api/services', data);
+            const response = await client.post('/api/services', data);
+
+            if (newService.tunnel_mode) {
+                try {
+                    await client.post(`/api/tunnels/${response.data.id}`, {
+                        local_service_url: newService.local_service_url || `http://localhost:${newService.port || 80}`
+                    });
+                } catch (tunnelErr: any) {
+                    alert('Service created, but Tunnel setup failed: ' + (tunnelErr.response?.data?.detail || tunnelErr.message));
+                }
+            }
+
             setShowAddModal(false);
             setNewService({
                 name: '',
@@ -76,7 +94,9 @@ const Services: React.FC = () => {
                 record_type: 'A',
                 port: '',
                 proxied: false,
-                check_interval: 300
+                check_interval: 300,
+                tunnel_mode: false,
+                local_service_url: ''
             });
             fetchServices();
         } catch (err) {
@@ -88,6 +108,27 @@ const Services: React.FC = () => {
         if (window.confirm('Are you sure you want to delete this service?')) {
             await client.delete(`/api/services/${id}`);
             fetchServices();
+        }
+    };
+
+    const toggleTunnel = async (service: any) => {
+        setTogglingTunnel(service.id);
+        try {
+            if (service.tunnel_mode) {
+                if (window.confirm(`Disable Tunnel for ${service.name}? Service will revert to standard DDNS.`)) {
+                    await client.delete(`/api/tunnels/${service.id}`);
+                }
+            } else {
+                const localUrl = window.prompt(`Enter your local service URL for ${service.name}:`, `http://localhost:${service.port || 3001}`);
+                if (localUrl) {
+                    await client.post(`/api/tunnels/${service.id}`, { local_service_url: localUrl });
+                }
+            }
+            await fetchServices();
+        } catch (err: any) {
+            alert(err.response?.data?.detail || 'Failed to toggle tunnel mode');
+        } finally {
+            setTogglingTunnel(null);
         }
     };
 
@@ -128,12 +169,12 @@ const Services: React.FC = () => {
                     </div>
                 </div>
                 <div className="bg-slate-900/50 border border-slate-800 rounded-3xl p-6 flex items-center gap-4">
-                    <div className="p-3 bg-blue-600/10 rounded-2xl text-blue-600">
-                        <Shield className="w-6 h-6" />
+                    <div className="p-3 bg-blue-500/10 rounded-2xl text-blue-500">
+                        <Link2 className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Cloudflare Proxy</p>
-                        <p className="text-2xl font-bold text-white">{services.filter(s => s.proxied).length}</p>
+                        <p className="text-slate-500 text-xs font-bold uppercase tracking-wider">Active Tunnels</p>
+                        <p className="text-2xl font-bold text-white">{services.filter(s => s.tunnel_mode).length}</p>
                     </div>
                 </div>
             </div>
@@ -146,6 +187,8 @@ const Services: React.FC = () => {
                         <input
                             type="text"
                             placeholder="Filter services..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                             className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-12 pr-4 py-3 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                         />
                     </div>
@@ -196,78 +239,116 @@ const Services: React.FC = () => {
                                     </td>
                                 </tr>
                             ) : (
-                                services.map((service) => (
-                                    <tr key={service.id} className="hover:bg-slate-800/30 transition-colors group">
-                                        <td className="px-6 py-5">
-                                            <div className="flex items-center gap-3">
-                                                <div className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-blue-500 font-bold">
-                                                    {service.name.charAt(0).toUpperCase()}
-                                                </div>
-                                                <div>
-                                                    <p className="text-white font-bold">{service.name}</p>
-                                                    <p className="text-slate-500 text-xs font-mono">
-                                                        {service.subdomain}.{service.zone_name}
-                                                    </p>
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-5 font-mono text-sm text-slate-300">
-                                            {service.current_ip || (
-                                                <span className="text-slate-600 italic">No IP detected</span>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            <div className="flex gap-2">
-                                                <span className="px-2.5 py-1 bg-slate-950 border border-slate-800 rounded-lg text-xs font-bold text-slate-400">
-                                                    {service.record_type}
-                                                </span>
-                                                {service.proxied && (
-                                                    <span className="px-2.5 py-1 bg-orange-500/10 border border-orange-500/20 rounded-lg text-xs font-bold text-orange-500 flex items-center gap-1">
-                                                        <Zap className="w-3 h-3" />
-                                                        Proxied
-                                                    </span>
-                                                )}
-                                            </div>
-                                        </td>
-                                        <td className="px-6 py-5">
-                                            {service.current_ip ? (
-                                                <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full w-fit">
-                                                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                                                    Online
-                                                </div>
-                                            ) : (
-                                                <div className="flex flex-col gap-1">
-                                                    <div className="flex items-center gap-2 text-slate-500 text-xs font-bold bg-slate-800/50 border border-slate-800 px-3 py-1.5 rounded-full w-fit">
-                                                        <span className="w-2 h-2 rounded-full bg-slate-600" />
-                                                        Offline
+                                services
+                                    .filter(s =>
+                                        s.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                        s.subdomain.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                        s.zone_name.toLowerCase().includes(searchQuery.toLowerCase())
+                                    )
+                                    .map((service) => (
+                                        <tr key={service.id} className="hover:bg-slate-800/30 transition-colors group">
+                                            <td className="px-6 py-5">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-10 h-10 rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-blue-500 font-bold">
+                                                        {service.name.charAt(0).toUpperCase()}
                                                     </div>
-                                                    <p className="text-[10px] text-slate-600 italic px-1">Waiting for agent heartbeat...</p>
+                                                    <div>
+                                                        <p className="text-white font-bold">{service.name}</p>
+                                                        <p className="text-slate-500 text-xs font-mono">
+                                                            {service.subdomain}.{service.zone_name}
+                                                        </p>
+                                                        {service.tunnel_mode && service.local_service_url && (
+                                                            <p className="text-blue-500/70 text-[10px] font-mono mt-0.5 flex items-center gap-1">
+                                                                <ChevronRight className="w-2 h-2" />
+                                                                {service.local_service_url}
+                                                            </p>
+                                                        )}
+                                                    </div>
                                                 </div>
-                                            )}
-                                        </td>
-                                        <td className="px-6 py-5 text-right">
-                                            <div className="flex items-center justify-end gap-2">
-                                                {!service.current_ip && (
-                                                    <a
-                                                        href="/download"
-                                                        className="px-3 py-1.5 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg text-xs font-bold transition-all border border-blue-600/20"
-                                                    >
-                                                        Get Agent
-                                                    </a>
+                                            </td>
+                                            <td className="px-6 py-5 font-mono text-sm text-slate-300">
+                                                {service.current_ip || (
+                                                    <span className="text-slate-600 italic">No IP detected</span>
                                                 )}
-                                                <button className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
-                                                    <ExternalLink className="w-5 h-5" />
-                                                </button>
-                                                <button
-                                                    onClick={() => deleteService(service.id)}
-                                                    className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
-                                                >
-                                                    <Trash2 className="w-5 h-5" />
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <div className="flex gap-2">
+                                                    <span className="px-2.5 py-1 bg-slate-950 border border-slate-800 rounded-lg text-xs font-bold text-slate-400">
+                                                        {service.record_type}
+                                                    </span>
+                                                    {service.proxied && !service.tunnel_mode && (
+                                                        <span className="px-2.5 py-1 bg-orange-500/10 border border-orange-500/20 rounded-lg text-xs font-bold text-orange-500 flex items-center gap-1">
+                                                            <Zap className="w-3 h-3" />
+                                                            Proxied
+                                                        </span>
+                                                    )}
+                                                    {service.tunnel_mode && (
+                                                        <span className="px-2.5 py-1 bg-blue-500/10 border border-blue-500/20 rounded-lg text-xs font-bold text-blue-500 flex items-center gap-1">
+                                                            <Link2 className="w-3 h-3" />
+                                                            CF Tunnel
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-5">
+                                                <div className="flex flex-col gap-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            onClick={() => toggleTunnel(service)}
+                                                            disabled={togglingTunnel === service.id}
+                                                            className={`transition-colors ${togglingTunnel === service.id ? 'opacity-50 cursor-not-allowed' : ''}`}
+                                                            title={service.tunnel_mode ? "Disable Tunnel" : "Enable Tunnel"}
+                                                        >
+                                                            {service.tunnel_mode ? (
+                                                                <ToggleRight className="w-8 h-8 text-blue-500 fill-blue-500/10" />
+                                                            ) : (
+                                                                <ToggleLeft className="w-8 h-8 text-slate-600" />
+                                                            )}
+                                                        </button>
+                                                        <span className={`text-[10px] font-bold uppercase tracking-wider ${service.tunnel_mode ? 'text-blue-500' : 'text-slate-500'}`}>
+                                                            {service.tunnel_mode ? 'Tunnel Active' : 'Tunnel Off'}
+                                                        </span>
+                                                        {togglingTunnel === service.id && <Loader2 className="w-3 h-3 animate-spin text-blue-500" />}
+                                                    </div>
+
+                                                    {service.current_ip ? (
+                                                        <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full w-fit">
+                                                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                                            Online
+                                                        </div>
+                                                    ) : (
+                                                        <div className="flex flex-col gap-1">
+                                                            <div className="flex items-center gap-2 text-slate-500 text-xs font-bold bg-slate-800/50 border border-slate-800 px-3 py-1.5 rounded-full w-fit">
+                                                                <span className="w-2 h-2 rounded-full bg-slate-600" />
+                                                                Offline
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </td>
+                                            <td className="px-6 py-5 text-right">
+                                                <div className="flex items-center justify-end gap-2">
+                                                    {!service.current_ip && (
+                                                        <a
+                                                            href="/download"
+                                                            className="px-3 py-1.5 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg text-xs font-bold transition-all border border-blue-600/20"
+                                                        >
+                                                            Get Agent
+                                                        </a>
+                                                    )}
+                                                    <button className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
+                                                        <ExternalLink className="w-5 h-5" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => deleteService(service.id)}
+                                                        className="p-2 text-slate-500 hover:text-red-500 hover:bg-red-500/10 rounded-xl transition-all"
+                                                    >
+                                                        <Trash2 className="w-5 h-5" />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    ))
                             )}
                         </tbody>
                     </table>
@@ -334,26 +415,62 @@ const Services: React.FC = () => {
                                 </div>
 
                                 <div className="col-span-2">
-                                    <label className="block text-sm font-semibold text-slate-300 mb-2">Cloudflare Proxy Status</label>
-                                    <div className="flex p-1 bg-slate-950 border border-slate-800 rounded-2xl">
+                                    <label className="block text-sm font-semibold text-slate-300 mb-2">Service Mode</label>
+                                    <div className="flex p-1 bg-slate-950 border border-slate-800 rounded-2xl mb-4">
                                         <button
                                             type="button"
-                                            onClick={() => setNewService({ ...newService, proxied: false })}
-                                            className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-bold transition-all ${!newService.proxied ? 'bg-slate-800 text-slate-300 shadow-lg' : 'text-slate-500 hover:text-slate-400'}`}
+                                            onClick={() => setNewService({ ...newService, tunnel_mode: false })}
+                                            className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-bold transition-all ${!newService.tunnel_mode ? 'bg-slate-800 text-slate-300 shadow-lg' : 'text-slate-500 hover:text-slate-400'}`}
                                         >
-                                            <div className="w-3 h-3 rounded-full bg-slate-500" />
-                                            Grey Cloud (DNS Only)
+                                            <RefreshCw className="w-4 h-4" />
+                                            Standard DDNS
                                         </button>
                                         <button
                                             type="button"
-                                            onClick={() => setNewService({ ...newService, proxied: true })}
-                                            className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-bold transition-all ${newService.proxied ? 'bg-orange-500/20 text-orange-500 border border-orange-500/30' : 'text-slate-500 hover:text-slate-400'}`}
+                                            onClick={() => setNewService({ ...newService, tunnel_mode: true })}
+                                            className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-bold transition-all ${newService.tunnel_mode ? 'bg-blue-600/20 text-blue-500 border border-blue-600/30' : 'text-slate-500 hover:text-slate-400'}`}
                                         >
-                                            <Zap className="w-4 h-4 fill-orange-500" />
-                                            Orange Cloud (Proxied)
+                                            <Link2 className="w-4 h-4" />
+                                            Cloudflare Tunnel
                                         </button>
                                     </div>
-                                    <p className="mt-2 text-[10px] text-slate-500 uppercase tracking-widest text-center">Orange cloud enables Cloudflare security & performance tools</p>
+
+                                    {newService.tunnel_mode ? (
+                                        <div className="animate-in slide-in-from-top-2 duration-200">
+                                            <label className="block text-sm font-semibold text-slate-300 mb-2 text-blue-400">Local Service URL (Internal)</label>
+                                            <input
+                                                type="text"
+                                                required={newService.tunnel_mode}
+                                                className="w-full bg-slate-950 border border-blue-900/50 rounded-2xl px-4 py-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all font-mono text-sm"
+                                                placeholder="e.g. http://localhost:3001"
+                                                value={newService.local_service_url}
+                                                onChange={(e) => setNewService({ ...newService, local_service_url: e.target.value })}
+                                            />
+                                            <p className="mt-2 text-[10px] text-blue-500/70 text-center font-medium italic">Tunnels bypass firewalls and port forwarding automatically</p>
+                                        </div>
+                                    ) : (
+                                        <div className="animate-in slide-in-from-top-2 duration-200">
+                                            <div className="flex p-1 bg-slate-950 border border-slate-800 rounded-2xl">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setNewService({ ...newService, proxied: false })}
+                                                    className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-bold transition-all ${!newService.proxied ? 'bg-slate-800 text-slate-300 shadow-lg' : 'text-slate-500 hover:text-slate-400'}`}
+                                                >
+                                                    <div className="w-3 h-3 rounded-full bg-slate-500" />
+                                                    Grey Cloud (DNS Only)
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setNewService({ ...newService, proxied: true })}
+                                                    className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-bold transition-all ${newService.proxied ? 'bg-orange-500/20 text-orange-500 border border-orange-500/30' : 'text-slate-500 hover:text-slate-400'}`}
+                                                >
+                                                    <Zap className="w-4 h-4 fill-orange-500" />
+                                                    Orange Cloud (Proxied)
+                                                </button>
+                                            </div>
+                                            <p className="mt-2 text-[10px] text-slate-500 uppercase tracking-widest text-center">Standard DDNS requires manual port forwarding on your router</p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 <div className="col-span-2 p-6 bg-slate-950 border border-slate-800 rounded-2xl">

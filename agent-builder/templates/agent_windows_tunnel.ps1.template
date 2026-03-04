@@ -1,0 +1,106 @@
+#Requires -Version 5.1
+param([switch]$Uninstall)
+
+# -- Tunnel Config ------------------------------------------------
+$TUNNEL_TOKEN      = "{{TUNNEL_TOKEN}}"
+$HOSTNAME_FULL     = "{{HOSTNAME}}"
+$SERVICE_NAME      = "{{SERVICE_NAME}}"
+$LOCAL_SERVICE_URL = "{{LOCAL_SERVICE_URL}}"
+$AGENT_VERSION     = "{{AGENT_VERSION}}"
+
+# Self-elevation
+if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]"Administrator")) {
+    $arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $PSCommandPath + '"'
+    if ($Uninstall) { $arguments += " -Uninstall" }
+    Start-Process PowerShell -ArgumentList $arguments -Verb RunAs -Wait
+    exit
+}
+
+$CloudflaredExe = "$env:ProgramFiles\Cloudflared\cloudflared.exe"
+$CloudflaredDir = "$env:ProgramFiles\Cloudflared"
+
+function Write-Step { param([string]$Msg) Write-Host "[....] $Msg" -ForegroundColor Cyan }
+function Write-Ok   { param([string]$Msg) Write-Host "[ OK ] $Msg" -ForegroundColor Green }
+function Write-Fail { param([string]$Msg) Write-Host "[FAIL] $Msg" -ForegroundColor Red }
+
+function Get-Cloudflared {
+    if (Test-Path $CloudflaredExe) {
+        Write-Ok "cloudflared already present at $CloudflaredExe"
+        return
+    }
+    Write-Step "Downloading cloudflared..."
+    if (!(Test-Path $CloudflaredDir)) {
+        New-Item -Path $CloudflaredDir -ItemType Directory -Force | Out-Null
+    }
+    $arch = if ([Environment]::Is64BitOperatingSystem) { "amd64" } else { "386" }
+    $url  = "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-windows-$arch.exe"
+    try {
+        Invoke-WebRequest -Uri $url -OutFile $CloudflaredExe -UseBasicParsing -ErrorAction Stop
+        Write-Ok "cloudflared downloaded."
+    } catch {
+        Write-Fail "Download failed: $_"
+        exit 1
+    }
+}
+
+function Install-Tunnel {
+    Get-Cloudflared
+
+    Write-Step "Installing cloudflared as Windows service for $HOSTNAME_FULL..."
+    Write-Step "  Routing: $HOSTNAME_FULL → $LOCAL_SERVICE_URL (no port forwarding needed!)"
+
+    # Stop and remove any existing cloudflared service for this agent
+    $svcName = "Cloudflared"
+    if (Get-Service -Name $svcName -ErrorAction SilentlyContinue) {
+        Write-Step "Removing existing cloudflared service..."
+        & $CloudflaredExe service uninstall 2>$null
+        Start-Sleep -Seconds 2
+    }
+
+    # Install using the embedded tunnel token
+    # Ingress rules are already configured in Cloudflare's API — no local config file needed.
+    & $CloudflaredExe service install $TUNNEL_TOKEN
+    if ($LASTEXITCODE -ne 0) {
+        Write-Fail "cloudflared service install failed (exit $LASTEXITCODE)."
+        exit 1
+    }
+
+    Start-Service -Name $svcName -ErrorAction SilentlyContinue
+    Start-Sleep -Seconds 2
+
+    $svc = Get-Service -Name $svcName -ErrorAction SilentlyContinue
+    if ($svc -and $svc.Status -eq "Running") {
+        Write-Ok "Cloudflare Tunnel service is running!"
+    } else {
+        Write-Step "Service installed but may need a moment to start. Check: Get-Service Cloudflared"
+    }
+
+    Write-Host ""
+    Write-Host "==========================================" -ForegroundColor Blue
+    Write-Host "  Driftlock Tunnel Agent v$AGENT_VERSION  " -ForegroundColor Blue
+    Write-Host "==========================================" -ForegroundColor Blue
+    Write-Host "  Hostname : $HOSTNAME_FULL"               -ForegroundColor White
+    Write-Host "  Routes to: $LOCAL_SERVICE_URL"           -ForegroundColor White
+    Write-Host "  Mode     : Cloudflare Tunnel (HTTPS)"    -ForegroundColor White
+    Write-Host "  Logs     : Get-EventLog -Source cloudflared" -ForegroundColor Gray
+    Write-Host "==========================================" -ForegroundColor Blue
+    Write-Host ""
+    Write-Host "[SUCCESS] Your service is now publicly accessible!" -ForegroundColor Green
+    Write-Host "  -> https://$HOSTNAME_FULL" -ForegroundColor Cyan
+}
+
+function Uninstall-Tunnel {
+    Write-Step "Stopping and removing cloudflared tunnel service..."
+    if (Test-Path $CloudflaredExe) {
+        & $CloudflaredExe service uninstall 2>$null
+        Write-Ok "cloudflared service removed."
+    } else {
+        Write-Fail "cloudflared.exe not found at $CloudflaredExe"
+    }
+}
+
+if ($Uninstall) {
+    Uninstall-Tunnel
+} else {
+    Install-Tunnel
+}

@@ -15,6 +15,7 @@ class CloudflareConfig(Base):
     id = Column(Integer, primary_key=True, index=True)
     api_token = Column(Text, nullable=False)  # AES-256 encrypted
     zone_cache = Column(Text, nullable=True)  # JSON array
+    account_id = Column(String, nullable=True)  # Primary CF account ID for Tunnel API
     verified_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -34,6 +35,12 @@ class Service(Base):
     check_interval = Column(Integer, default=300)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    # Cloudflare Tunnel fields
+    tunnel_mode = Column(Boolean, default=False)
+    tunnel_id = Column(String, nullable=True)         # CF tunnel UUID
+    tunnel_token = Column(Text, nullable=True)         # Encrypted tunnel token
+    tunnel_account_id = Column(String, nullable=True) # CF account that owns the tunnel
+    local_service_url = Column(String, nullable=True) # e.g. http://localhost:3001
 
 class UpdateLog(Base):
     __tablename__ = "update_log"

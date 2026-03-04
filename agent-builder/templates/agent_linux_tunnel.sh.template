@@ -1,0 +1,125 @@
+#!/bin/bash
+set -euo pipefail
+
+# -- Tunnel Config ------------------------------------------------
+TUNNEL_TOKEN="{{TUNNEL_TOKEN}}"
+HOSTNAME_FULL="{{HOSTNAME}}"
+SERVICE_NAME="{{SERVICE_NAME}}"
+LOCAL_SERVICE_URL="{{LOCAL_SERVICE_URL}}"
+AGENT_VERSION="{{AGENT_VERSION}}"
+
+RED='\033[0;31m'; GREEN='\033[0;32m'; BLUE='\033[0;34m'; CYAN='\033[0;36m'; NC='\033[0m'
+step() { echo -e "${CYAN}[....] $1${NC}"; }
+ok()   { echo -e "${GREEN}[ OK ] $1${NC}"; }
+fail() { echo -e "${RED}[FAIL] $1${NC}"; exit 1; }
+
+require_root() {
+    if [[ $EUID -ne 0 ]]; then
+        fail "This script must be run as root: sudo bash $0 $*"
+    fi
+}
+
+detect_pkg_manager() {
+    if command -v apt-get &>/dev/null; then echo "apt"
+    elif command -v yum &>/dev/null; then echo "yum"
+    elif command -v dnf &>/dev/null; then echo "dnf"
+    elif command -v zypper &>/dev/null; then echo "zypper"
+    else echo "manual"
+    fi
+}
+
+install_cloudflared() {
+    if command -v cloudflared &>/dev/null; then
+        ok "cloudflared already installed ($(cloudflared --version 2>&1 | head -1))"
+        return
+    fi
+
+    step "Installing cloudflared..."
+    local pm
+    pm=$(detect_pkg_manager)
+
+    case "$pm" in
+        apt)
+            curl -fsSL https://pkg.cloudflare.com/cloudflare-main.gpg \
+                | gpg --yes --dearmor -o /usr/share/keyrings/cloudflare-main.gpg
+            echo "deb [signed-by=/usr/share/keyrings/cloudflare-main.gpg] \
+https://pkg.cloudflare.com/cloudflared $(. /etc/os-release; echo $VERSION_CODENAME) main" \
+                > /etc/apt/sources.list.d/cloudflared.list
+            apt-get update -qq && apt-get install -y cloudflared
+            ;;
+        yum|dnf)
+            "$pm" install -y cloudflared 2>/dev/null || {
+                # Fallback: direct binary download
+                local arch; arch=$(uname -m); arch=${arch/x86_64/amd64}; arch=${arch/aarch64/arm64}
+                curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${arch}" \
+                    -o /usr/local/bin/cloudflared
+                chmod +x /usr/local/bin/cloudflared
+            }
+            ;;
+        *)
+            step "No supported package manager found — downloading binary directly..."
+            local arch; arch=$(uname -m); arch=${arch/x86_64/amd64}; arch=${arch/aarch64/arm64}
+            curl -fsSL "https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-${arch}" \
+                -o /usr/local/bin/cloudflared
+            chmod +x /usr/local/bin/cloudflared
+            ;;
+    esac
+
+    command -v cloudflared &>/dev/null || fail "cloudflared installation failed."
+    ok "cloudflared installed."
+}
+
+install() {
+    require_root
+
+    install_cloudflared
+
+    step "Installing cloudflared tunnel service for ${HOSTNAME_FULL}..."
+    step "  Routing: ${HOSTNAME_FULL} → ${LOCAL_SERVICE_URL} (no port forwarding needed!)"
+
+    # Remove any existing cloudflared service
+    if systemctl is-active --quiet cloudflared 2>/dev/null; then
+        step "Stopping existing cloudflared service..."
+        systemctl stop cloudflared 2>/dev/null || true
+        cloudflared service uninstall 2>/dev/null || true
+    fi
+
+    # Install using the embedded tunnel token.
+    # Ingress rules are already configured in Cloudflare's API — no config.yml needed.
+    cloudflared service install "${TUNNEL_TOKEN}"
+
+    systemctl start cloudflared
+    systemctl enable cloudflared
+
+    if systemctl is-active --quiet cloudflared; then
+        ok "Cloudflare Tunnel service is running!"
+    else
+        echo -e "${RED}Service installed but not running. Check: journalctl -u cloudflared -n 50${NC}"
+    fi
+
+    echo ""
+    echo -e "${BLUE}=========================================${NC}"
+    echo -e "${BLUE}  Driftlock Tunnel Agent v${AGENT_VERSION}   ${NC}"
+    echo -e "${BLUE}=========================================${NC}"
+    echo -e "  Hostname : ${HOSTNAME_FULL}"
+    echo -e "  Routes to: ${LOCAL_SERVICE_URL}"
+    echo -e "  Mode     : Cloudflare Tunnel (HTTPS)"
+    echo -e "  Logs     : journalctl -u cloudflared -f"
+    echo -e "${BLUE}=========================================${NC}"
+    echo ""
+    echo -e "${GREEN}[SUCCESS] Your service is now publicly accessible!${NC}"
+    echo -e "${CYAN}  -> https://${HOSTNAME_FULL}${NC}"
+}
+
+uninstall() {
+    require_root
+    step "Stopping and removing cloudflared tunnel service..."
+    systemctl stop cloudflared 2>/dev/null || true
+    cloudflared service uninstall 2>/dev/null || true
+    ok "Tunnel service removed."
+}
+
+case "${1:-install}" in
+    --uninstall) uninstall ;;
+    *)           install ;;
+esac

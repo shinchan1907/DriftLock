@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field, EmailStr, validator
+from pydantic import BaseModel, Field
 from typing import List, Optional
 from datetime import datetime
 import uuid
@@ -57,6 +57,10 @@ class ServiceResponse(ServiceBase):
     api_key: str
     created_at: datetime
     updated_at: Optional[datetime]
+    # Tunnel fields (token is never exposed to frontend)
+    tunnel_mode: bool = False
+    tunnel_id: Optional[str] = None
+    local_service_url: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -104,3 +108,21 @@ class TimeseriesData(BaseModel):
 
 class TimeseriesResponse(BaseModel):
     days: List[TimeseriesData]
+
+# Tunnel
+class TunnelCreateRequest(BaseModel):
+    local_service_url: str  # e.g. http://localhost:3001
+
+class TunnelResponse(BaseModel):
+    tunnel_id: str
+    hostname: str
+    status: str
+    message: str
+
+class CloudflareStatusResponse(BaseModel):
+    configured: bool
+    zones_count: int
+    verified_at: Optional[datetime]
+    zones: Optional[List[dict]] = []
+    account_id: Optional[str] = None
+    has_tunnel_support: bool = False
