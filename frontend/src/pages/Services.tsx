@@ -27,6 +27,7 @@ const Services: React.FC = () => {
         zone_id: '',
         zone_name: '',
         record_type: 'A',
+        port: '',
         proxied: false,
         check_interval: 300
     });
@@ -61,8 +62,22 @@ const Services: React.FC = () => {
     const handleAddService = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
-            await client.post('/api/services', newService);
+            const data = {
+                ...newService,
+                port: newService.port ? parseInt(newService.port.toString()) : null
+            };
+            await client.post('/api/services', data);
             setShowAddModal(false);
+            setNewService({
+                name: '',
+                subdomain: '',
+                zone_id: '',
+                zone_name: '',
+                record_type: 'A',
+                port: '',
+                proxied: false,
+                check_interval: 300
+            });
             fetchServices();
         } catch (err) {
             alert('Failed to add service');
@@ -185,7 +200,10 @@ const Services: React.FC = () => {
                                                 </div>
                                                 <div>
                                                     <p className="text-white font-bold">{service.name}</p>
-                                                    <p className="text-slate-500 text-xs font-mono">{service.subdomain}.{service.zone_name}</p>
+                                                    <p className="text-slate-500 text-xs font-mono">
+                                                        {service.subdomain}.{service.zone_name}
+                                                        {service.port && <span className="text-blue-400 ml-1">:{service.port}</span>}
+                                                    </p>
                                                 </div>
                                             </div>
                                         </td>
@@ -289,6 +307,16 @@ const Services: React.FC = () => {
                                         {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
                                     </select>
                                 </div>
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-semibold text-slate-300 mb-2">Service Port (Optional)</label>
+                                    <input
+                                        type="number"
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                        placeholder="e.g. 80, 443, 8080"
+                                        value={newService.port}
+                                        onChange={(e) => setNewService({ ...newService, port: e.target.value })}
+                                    />
+                                </div>
                             </div>
 
                             <div className="p-6 bg-slate-950 border border-slate-800 rounded-2xl">
@@ -297,6 +325,7 @@ const Services: React.FC = () => {
                                     <Globe className="w-5 h-5 text-blue-500" />
                                     <span className="text-lg font-bold text-white tracking-tight">
                                         {newService.subdomain || '---'}.{newService.zone_name || 'yourdomain.com'}
+                                        {newService.port && <span className="text-blue-400">:{newService.port}</span>}
                                     </span>
                                 </div>
                             </div>
