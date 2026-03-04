@@ -1,0 +1,41 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment variables
+.env
+.letsencrypt-email
+
+# Certificates
+nginx/ssl/
+certbot/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+venv/
+.venv/
+.pytest_cache/
+
+# Node/React
+node_modules/
+dist/
+build/
+.eslintcache
+
+# Database
+driftlock.db
+backups/
+
+# Agents
+agent-builder/dist/
+agent-builder/build/
+*.exe
+*.sh
+*.ps1
+!setup.sh
+
+# Logs
+*.log
+docker-compose.override.yml (if specifically used for local only, but keeping for now)
