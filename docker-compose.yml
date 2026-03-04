@@ -49,7 +49,7 @@ services:
     build: ./frontend
     volumes:
       - frontend_build:/app/dist
-    profiles: [ "build" ]
+    restart: "no"
 
   certbot:
     image: certbot/certbot

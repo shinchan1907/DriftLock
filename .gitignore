@@ -32,8 +32,11 @@ backups/
 agent-builder/dist/
 agent-builder/build/
 *.exe
-*.sh
-*.ps1
+# Exclude scripts EXCEPT setup.sh and script in the repo
+# Actually, better to just exclude the compiled/temporary ones
+# and allow all scripts in the repo by default.
+# *.sh <-- removing this as it's too broad
+# *.ps1 <-- removing this as it's too broad
 !setup.sh
 
 # Logs
