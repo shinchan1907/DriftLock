@@ -53,8 +53,15 @@ else
     echo "✓ Docker already installed"
 fi
 
+# Detect if we need sudo for docker (group not active until re-login)
+DOCKER="docker"
+if ! docker info &> /dev/null; then
+    echo "ℹ️  Docker group not active yet — using sudo for docker commands"
+    DOCKER="sudo docker"
+fi
+
 # Ensure docker compose plugin works
-if ! docker compose version &> /dev/null; then
+if ! $DOCKER compose version &> /dev/null; then
     echo "❌ docker compose plugin not found. Please install Docker Compose v2."
     exit 1
 fi
@@ -145,7 +152,7 @@ echo "✓ .env file created"
 
 echo ""
 echo "🏗️  Building frontend..."
-docker compose run --rm frontend
+$DOCKER compose run --rm frontend
 echo "✓ Frontend built"
 
 # ─────────────────────────────────────────
@@ -154,7 +161,7 @@ echo "✓ Frontend built"
 
 echo ""
 echo "🚀 Starting services..."
-docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d nginx backend
+$DOCKER compose -f docker-compose.yml -f docker-compose.prod.yml up -d nginx backend
 sleep 5
 echo "✓ Services started"
 
@@ -164,7 +171,7 @@ echo "✓ Services started"
 
 echo ""
 echo "🔐 Obtaining SSL certificate from Let's Encrypt..."
-docker compose -f docker-compose.yml -f docker-compose.prod.yml run --rm certbot \
+$DOCKER compose -f docker-compose.yml -f docker-compose.prod.yml run --rm certbot \
     certonly --webroot -w /var/www/certbot \
     --email "${LETSENCRYPT_EMAIL}" \
     --agree-tos --no-eff-email \
@@ -175,7 +182,7 @@ if [ $? -eq 0 ]; then
 else
     echo "⚠️  SSL certificate failed — dashboard will work on HTTP only"
     echo "   Make sure your domain's A record points to this server's IP"
-    echo "   Then re-run: docker compose run --rm certbot certonly --webroot -w /var/www/certbot --email ${LETSENCRYPT_EMAIL} --agree-tos --no-eff-email -d ${DOMAIN}"
+    echo "   Then re-run: sudo docker compose run --rm certbot certonly --webroot -w /var/www/certbot --email ${LETSENCRYPT_EMAIL} --agree-tos --no-eff-email -d ${DOMAIN}"
 fi
 
 # ─────────────────────────────────────────
@@ -184,7 +191,7 @@ fi
 
 echo ""
 echo "🔄 Reloading Nginx with SSL..."
-docker compose -f docker-compose.yml -f docker-compose.prod.yml exec nginx nginx -s reload 2>/dev/null || true
+$DOCKER compose -f docker-compose.yml -f docker-compose.prod.yml exec nginx nginx -s reload 2>/dev/null || true
 echo "✓ Nginx reloaded"
 
 # ─────────────────────────────────────────
