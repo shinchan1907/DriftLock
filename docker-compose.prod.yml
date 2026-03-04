@@ -1,0 +1,17 @@
+version: '3.9'
+
+services:
+  nginx:
+    restart: always
+    deploy:
+      resources:
+        limits: { cpus: '0.5', memory: 256M }
+
+  backend:
+    restart: always
+    deploy:
+      resources:
+        limits: { cpus: '1.0', memory: 512M }
+    environment:
+      - ENVIRONMENT=production
+      - LOG_LEVEL=WARNING

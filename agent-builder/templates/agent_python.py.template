@@ -1,0 +1,141 @@
+import os
+import sys
+import time
+import json
+import urllib.request
+import urllib.error
+import argparse
+import subprocess
+import logging
+from datetime import datetime
+
+# DRIFTLOCK_CONFIG_START — DO NOT MODIFY THIS BLOCK
+SERVER_URL     = "{{SERVER_URL_PADDED_TO_200_CHARS}}"
+API_KEY        = "{{API_KEY_PADDED_TO_64_CHARS}}"
+HOSTNAME_FULL  = "{{HOSTNAME_PADDED_TO_100_CHARS}}"
+CHECK_INTERVAL = {{CHECK_INTERVAL_PADDED_TO_6_CHARS}}
+SERVICE_NAME   = "{{SERVICE_NAME_PADDED_TO_64_CHARS}}"
+AGENT_VERSION  = "{{AGENT_VERSION_PADDED_TO_20_CHARS}}"
+# DRIFTLOCK_CONFIG_END
+
+# Strip padding
+SERVER_URL = SERVER_URL.strip()
+API_KEY = API_KEY.strip()
+HOSTNAME_FULL = HOSTNAME_FULL.strip()
+SERVICE_NAME = SERVICE_NAME.strip()
+AGENT_VERSION = AGENT_VERSION.strip()
+
+# Setup paths
+if sys.platform == 'win32':
+    DATA_DIR = os.path.join(os.environ.get('APPDATA', ''), 'Driftlock', SERVICE_NAME)
+else:
+    DATA_DIR = os.path.join('/var/lib/driftlock', SERVICE_NAME)
+
+os.makedirs(DATA_DIR, exist_ok=True)
+LOG_FILE = os.path.join(DATA_DIR, 'agent.log')
+LAST_IP_FILE = os.path.join(DATA_DIR, 'last_ip')
+
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s [%(levelname)s] %(message)s',
+    handlers=[
+        logging.FileHeader(LOG_FILE),
+        logging.StreamHandler()
+    ]
+)
+
+def get_public_ip():
+    sources = ["https://api.ipify.org", "https://ifconfig.me", "https://icanhazip.com"]
+    for source in sources:
+        try:
+            with urllib.request.urlopen(source, timeout=5) as response:
+                return response.read().decode('utf-8').strip()
+        except Exception:
+            continue
+    return None
+
+def send_update(current_ip):
+    url = f"{SERVER_URL}/api/update"
+    headers = {
+        "X-API-Key": API_KEY,
+        "X-Agent-Version": AGENT_VERSION,
+        "X-Agent-Platform": "windows-exe" if sys.platform == 'win32' else "linux-python",
+        "Content-Type": "application/json"
+    }
+    data = json.dumps({"ip": current_ip}).encode('utf-8')
+    
+    try:
+        req = urllib.request.Request(url, data=data, headers=headers, method='POST')
+        with urllib.request.urlopen(req, timeout=10) as response:
+            res_data = json.loads(response.read().decode('utf-8'))
+            return res_data.get('status') in ('success', 'no_change')
+    except Exception as e:
+        logging.error(f"API Update failed: {e}")
+        return False
+
+def run_check():
+    current_ip = get_public_ip()
+    if not current_ip:
+        logging.error("Could not detect public IP")
+        return
+
+    last_ip = ""
+    if os.path.exists(LAST_IP_FILE):
+        with open(LAST_IP_FILE, 'r') as f:
+            last_ip = f.read().strip()
+
+    if current_ip != last_ip:
+        if send_update(current_ip):
+            with open(LAST_IP_FILE, 'w') as f:
+                f.write(current_ip)
+            logging.info(f"IP updated to {current_ip}")
+        else:
+            logging.error(f"Failed to update IP to {current_ip}")
+    else:
+        logging.info(f"IP unchanged ({current_ip})")
+
+def install_windows():
+    if sys.platform != 'win32':
+        print("Installation only supported on Windows")
+        return
+
+    exe_path = os.path.abspath(sys.executable)
+    task_name = f"DriftlockAgent-{SERVICE_NAME}"
+    
+    # Register scheduled task
+    cmd = [
+        "schtasks", "/create", "/tn", task_name,
+        "/tr", f'"{exe_path}" --daemon',
+        "/sc", "minute", "/mo", str(max(1, CHECK_INTERVAL // 60)),
+        "/ru", "SYSTEM", "/rl", "HIGHEST", "/f"
+    ]
+    try:
+        subprocess.run(cmd, check=True)
+        print(f"✓ Scheduled task {task_name} created")
+    except subprocess.CalledProcessError as e:
+        print(f"Error creating scheduled task: {e}")
+
+def main():
+    parser = argparse.ArgumentParser(description=f"Driftlock DDNS Agent v{AGENT_VERSION}")
+    parser.add_argument("--daemon", action="store_true", help="Run in a continuous loop")
+    parser.add_argument("--check", action="store_true", help="Run a single check and exit")
+    parser.add_argument("--install", action="store_true", help="Install as a system service/task")
+    
+    args = parser.parse_args()
+    
+    if args.daemon:
+        while True:
+            run_check()
+            time.sleep(CHECK_INTERVAL)
+    elif args.check:
+        run_check()
+    elif args.install:
+        if sys.platform == 'win32':
+            install_windows()
+        else:
+            print("Auto-install for non-windows needs systemd integration. Run with --daemon via systemd manually.")
+    else:
+        parser.print_help()
+
+if __name__ == "__main__":
+    main()

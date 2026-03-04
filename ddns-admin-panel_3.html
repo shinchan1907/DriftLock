@@ -1,0 +1,2081 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DDNS Control Panel</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&display=swap');
+
+:root {
+  --bg: #060810;
+  --surface: #0c1018;
+  --surface2: #111827;
+  --surface3: #161f2e;
+  --border: #1a2535;
+  --border2: #213044;
+  --accent: #3b82f6;
+  --accent-dim: rgba(59,130,246,0.12);
+  --accent-glow: rgba(59,130,246,0.18);
+  --green: #22c55e;
+  --green-dim: rgba(34,197,94,0.12);
+  --orange: #f59e0b;
+  --red: #ef4444;
+  --text: #b8cfe0;
+  --text2: #8ba8c4;
+  --muted: #3f5a78;
+  --heading: #ddeeff;
+  --mono: 'IBM Plex Mono', monospace;
+  --sans: 'DM Sans', sans-serif;
+  --sidebar-w: 248px;
+  --topbar-h: 58px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.4), 0 4px 16px rgba(0,0,0,0.3);
+  --shadow-lg: 0 8px 32px rgba(0,0,0,0.5);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+html, body { height: 100%; }
+body {
+  font-family: var(--sans);
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+  line-height: 1.5;
+}
+
+/* ─── FINE-GRAIN NOISE TEXTURE ─── */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.4;
+}
+
+/* ─── SCREENS ─── */
+.screen { display: none; min-height: 100vh; }
+.screen.active { display: flex; }
+
+/* ══════════════════════════════════════════
+   LOGIN
+══════════════════════════════════════════ */
+#s-login {
+  align-items: center;
+  justify-content: center;
+  background: var(--bg);
+  padding: 24px;
+  position: relative;
+  overflow: hidden;
+}
+#s-login::before {
+  content: '';
+  position: absolute;
+  width: 700px; height: 700px;
+  background: radial-gradient(circle, rgba(59,130,246,0.055) 0%, transparent 65%);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+#s-login::after {
+  content: '';
+  position: absolute;
+  width: 300px; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(59,130,246,0.3), transparent);
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 1;
+}
+.login-box {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 18px;
+  padding: 44px 40px 40px;
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+  animation: fadeUp 0.45s cubic-bezier(0.16,1,0.3,1);
+  box-shadow: var(--shadow-lg), 0 0 0 1px rgba(59,130,246,0.06);
+  z-index: 2;
+}
+.login-box::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 20%; right: 20%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(59,130,246,0.5), transparent);
+  border-radius: 99px;
+}
+.login-logo { text-align: center; margin-bottom: 36px; }
+.login-logo .logo-icon {
+  width: 56px; height: 56px;
+  background: linear-gradient(145deg, #3b82f6, #1d4ed8);
+  border-radius: 16px;
+  display: inline-grid;
+  place-items: center;
+  font-size: 26px;
+  margin-bottom: 18px;
+  box-shadow: 0 0 0 1px rgba(59,130,246,0.3), 0 8px 32px rgba(59,130,246,0.25);
+}
+.login-logo h1 {
+  font-family: var(--mono);
+  font-size: 21px;
+  font-weight: 700;
+  color: var(--heading);
+  letter-spacing: -0.5px;
+}
+.login-logo p { font-size: 12px; color: var(--muted); margin-top: 5px; letter-spacing: 0.5px; }
+
+/* ── FIELD ── */
+.field { margin-bottom: 16px; }
+.field label {
+  display: block;
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 1.8px;
+  text-transform: uppercase;
+  margin-bottom: 7px;
+}
+.field input, .textarea-field, .select-field {
+  width: 100%;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 11px 14px;
+  color: var(--heading);
+  font-family: var(--mono);
+  font-size: 13px;
+  outline: none;
+  transition: border-color 0.18s, box-shadow 0.18s;
+  appearance: none;
+}
+.field input:focus, .textarea-field:focus, .select-field:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.field input::placeholder, .textarea-field::placeholder { color: var(--muted); }
+.textarea-field { resize: vertical; min-height: 80px; cursor: auto; }
+.select-field { cursor: pointer; }
+
+/* ── BUTTONS ── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+  padding: 11px 20px;
+  border-radius: var(--radius);
+  font-family: var(--sans);
+  font-weight: 600;
+  font-size: 13.5px;
+  cursor: pointer;
+  border: none;
+  transition: all 0.18s cubic-bezier(0.16,1,0.3,1);
+  text-decoration: none;
+  white-space: nowrap;
+  letter-spacing: -0.1px;
+}
+.btn:active { transform: scale(0.97) !important; }
+.btn-primary {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(59,130,246,0.35);
+}
+.btn-primary:hover { background: #2563eb; box-shadow: 0 4px 20px rgba(59,130,246,0.45); transform: translateY(-1px); }
+.btn-full { width: 100%; }
+.btn-ghost {
+  background: transparent;
+  color: var(--text2);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { border-color: var(--border2); color: var(--heading); background: var(--surface2); }
+.btn-green {
+  background: var(--green);
+  color: #030a05;
+  font-weight: 700;
+  box-shadow: 0 2px 12px rgba(34,197,94,0.3);
+}
+.btn-green:hover { background: #16a34a; box-shadow: 0 4px 18px rgba(34,197,94,0.4); transform: translateY(-1px); }
+.btn-sm { padding: 7px 13px; font-size: 12px; border-radius: 7px; }
+.btn-xs { padding: 4px 10px; font-size: 11px; border-radius: 6px; }
+.btn-danger { background: rgba(239,68,68,0.1); color: var(--red); border: 1px solid rgba(239,68,68,0.25); }
+.btn-danger:hover { background: rgba(239,68,68,0.2); }
+
+/* ══════════════════════════════════════════
+   APP SHELL — STICKY SIDEBAR LAYOUT
+══════════════════════════════════════════ */
+.app-shell {
+  display: flex;
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* ── STICKY SIDEBAR ── */
+.sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  /* Sticky magic */
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  z-index: 50;
+  transition: transform 0.28s cubic-bezier(0.16,1,0.3,1);
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border2); }
+
+.sidebar-header {
+  padding: 20px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  flex-shrink: 0;
+}
+.sidebar-logo {
+  width: 34px; height: 34px;
+  background: linear-gradient(145deg, #3b82f6, #1d4ed8);
+  border-radius: 9px;
+  display: grid; place-items: center;
+  font-size: 16px;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 1px rgba(59,130,246,0.25), 0 4px 14px rgba(59,130,246,0.2);
+}
+.sidebar-title { font-family: var(--mono); font-weight: 700; font-size: 13.5px; color: var(--heading); line-height: 1.2; }
+.sidebar-sub { font-size: 10px; color: var(--muted); margin-top: 2px; letter-spacing: 0.3px; }
+
+.sidebar-nav { flex: 1; padding: 14px 10px 10px; overflow-y: auto; }
+.sidebar-nav::-webkit-scrollbar { display: none; }
+
+.nav-section { margin-bottom: 20px; }
+.nav-group-label {
+  font-family: var(--mono);
+  font-size: 9px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 0 10px 7px;
+  opacity: 0.7;
+}
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text2);
+  transition: all 0.15s;
+  margin-bottom: 1px;
+  position: relative;
+  user-select: none;
+}
+.nav-item:hover { background: var(--surface2); color: var(--heading); }
+.nav-item.active {
+  background: var(--accent-dim);
+  color: var(--accent);
+  font-weight: 600;
+}
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 20%; bottom: 20%;
+  width: 2.5px;
+  background: var(--accent);
+  border-radius: 99px;
+  box-shadow: 0 0 8px rgba(59,130,246,0.5);
+}
+.nav-icon {
+  font-size: 14px;
+  width: 18px;
+  text-align: center;
+  flex-shrink: 0;
+  opacity: 0.85;
+}
+.nav-text { flex: 1; }
+.nav-badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 99px;
+  letter-spacing: 0.3px;
+}
+.badge-warn { background: rgba(245,158,11,0.2); color: var(--orange); border: 1px solid rgba(245,158,11,0.3); }
+.badge-ok   { background: rgba(34,197,94,0.15); color: var(--green);  border: 1px solid rgba(34,197,94,0.25); }
+
+.sidebar-footer {
+  padding: 14px 16px;
+  border-top: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.sys-status {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 11px;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.status-dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--green);
+  box-shadow: 0 0 0 2px rgba(34,197,94,0.2);
+  animation: pulse-dot 2.5s infinite;
+  flex-shrink: 0;
+}
+.status-dot.off { background: var(--red); box-shadow: 0 0 0 2px rgba(239,68,68,0.2); animation: none; }
+@keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:0.35;} }
+.status-text { font-family: var(--mono); font-size: 10.5px; color: var(--text2); }
+
+/* ── MOBILE OVERLAY SIDEBAR ── */
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.6);
+  backdrop-filter: blur(3px);
+  z-index: 49;
+}
+.sidebar-overlay.open { display: block; }
+
+/* ── PAGE AREA ── */
+.page-area {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-x: hidden;
+}
+
+/* ── TOPBAR ── */
+.topbar {
+  height: var(--topbar-h);
+  border-bottom: 1px solid var(--border2);
+  display: flex;
+  align-items: center;
+  padding: 0 24px;
+  gap: 12px;
+  flex-shrink: 0;
+  background: rgba(10,14,22,0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.03), 0 2px 12px rgba(0,0,0,0.3);
+}
+.topbar-hamburger {
+  display: none;
+  width: 36px; height: 36px;
+  background: var(--surface3);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  cursor: pointer;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.18s;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.05);
+  position: relative;
+  padding: 0;
+  color: transparent;
+  overflow: visible;
+}
+.topbar-hamburger:hover {
+  background: var(--surface2);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-glow);
+}
+/* Custom 3-line hamburger icon */
+.topbar-hamburger::before,
+.topbar-hamburger::after,
+.topbar-hamburger .hb-mid {
+  content: '';
+  display: block;
+  width: 16px; height: 1.8px;
+  background: var(--heading);
+  border-radius: 2px;
+  position: absolute;
+  left: 50%; transform: translateX(-50%);
+  transition: all 0.2s;
+}
+.topbar-hamburger::before { top: 11px; background: var(--heading); }
+.topbar-hamburger .hb-mid { top: 17px; background: var(--text); width: 12px; }
+.topbar-hamburger::after  { top: 23px; background: var(--heading); }
+.topbar-hamburger:hover::before,
+.topbar-hamburger:hover .hb-mid,
+.topbar-hamburger:hover::after { background: var(--accent); width: 16px; }
+.topbar-breadcrumb {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--muted);
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.topbar-breadcrumb span { color: var(--accent); }
+.topbar-actions { display: flex; align-items: center; gap: 8px; }
+.avatar {
+  width: 30px; height: 30px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #3b82f6, #7c3aed);
+  display: grid; place-items: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+  box-shadow: 0 0 0 2px rgba(59,130,246,0.25);
+}
+
+/* ── PAGE BODY ── */
+.page-body {
+  padding: 28px 28px 40px;
+  flex: 1;
+}
+.page-header { margin-bottom: 24px; }
+.page-header h2 {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--heading);
+  letter-spacing: -0.4px;
+  line-height: 1.2;
+}
+.page-header p { font-size: 13px; color: var(--muted); margin-top: 5px; }
+
+/* ── CARDS ── */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+.card-header {
+  padding: 15px 20px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.card-header h3 { font-size: 13.5px; font-weight: 600; color: var(--heading); }
+.card-header p { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.card-body { padding: 20px; }
+
+/* ── SETUP GRID ── */
+.setup-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+
+/* ── INSTRUCTION STEPS ── */
+.instruction-steps { display: flex; flex-direction: column; }
+.inst-step { display: flex; gap: 14px; padding-bottom: 22px; position: relative; }
+.inst-step:not(:last-child)::after {
+  content: '';
+  position: absolute;
+  left: 14px; top: 32px; bottom: 0;
+  width: 1px;
+  background: linear-gradient(var(--border2), transparent);
+}
+.inst-num {
+  width: 30px; height: 30px; flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--surface2);
+  border: 1px solid var(--border2);
+  display: grid; place-items: center;
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.inst-content { flex: 1; padding-top: 3px; }
+.inst-title { font-size: 13px; font-weight: 600; color: var(--heading); margin-bottom: 4px; }
+.inst-desc { font-size: 12px; color: var(--text2); line-height: 1.65; }
+.inst-link {
+  display: inline-flex; align-items: center; gap: 4px;
+  margin-top: 6px;
+  font-family: var(--mono); font-size: 10.5px;
+  color: var(--accent);
+  border-bottom: 1px dashed rgba(59,130,246,0.35);
+  cursor: pointer; text-decoration: none;
+}
+.code-block {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 9px 13px;
+  font-family: var(--mono); font-size: 11px;
+  color: var(--green); margin-top: 8px; line-height: 1.8;
+}
+.code-block .dim { color: var(--muted); }
+.permissions-list { display: flex; flex-direction: column; gap: 5px; margin-top: 8px; }
+.perm-item {
+  display: flex; align-items: center; gap: 8px;
+  font-family: var(--mono); font-size: 11px; color: var(--text);
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px; padding: 6px 10px;
+}
+.perm-item .check { color: var(--green); }
+
+/* ── TOKEN AREA ── */
+.token-area { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; }
+.token-status {
+  padding: 12px 18px;
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-family: var(--mono);
+}
+.token-status.ok     { background: rgba(34,197,94,0.07);   border-bottom: 1px solid rgba(34,197,94,0.18);  color: var(--green); }
+.token-status.none   { background: rgba(239,68,68,0.06);   border-bottom: 1px solid rgba(239,68,68,0.18); color: var(--red); }
+.token-status.verify { background: rgba(245,158,11,0.07);  border-bottom: 1px solid rgba(245,158,11,0.2); color: var(--orange); }
+
+.info-box {
+  background: rgba(59,130,246,0.06);
+  border: 1px solid rgba(59,130,246,0.15);
+  border-radius: 8px;
+  padding: 11px 13px;
+  font-size: 12px; color: var(--text2);
+  line-height: 1.65; margin-top: 12px;
+  display: flex; gap: 8px; align-items: flex-start;
+}
+.info-box .ico { flex-shrink: 0; }
+
+/* ── SERVICES TABLE ── */
+.domains-bar {
+  display: flex; align-items: center; gap: 8px;
+  margin-bottom: 18px; flex-wrap: wrap;
+}
+.domain-chip {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 99px;
+  padding: 5px 14px;
+  font-family: var(--mono); font-size: 12px;
+  color: var(--text2); cursor: pointer;
+  transition: all 0.14s;
+}
+.domain-chip:hover { border-color: var(--border2); color: var(--heading); }
+.domain-chip.active { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+.domain-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
+
+.tbl-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+.services-table { width: 100%; border-collapse: collapse; min-width: 600px; }
+.services-table th {
+  text-align: left;
+  font-family: var(--mono); font-size: 9.5px;
+  letter-spacing: 1.5px; text-transform: uppercase;
+  color: var(--muted); padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+}
+.services-table td {
+  padding: 13px 16px;
+  border-bottom: 1px solid rgba(26,37,53,0.7);
+  font-size: 13px; vertical-align: middle;
+}
+.services-table tr:last-child td { border-bottom: none; }
+.services-table tbody tr { transition: background 0.1s; }
+.services-table tbody tr:hover td { background: rgba(255,255,255,0.012); }
+.svc-name { font-weight: 600; color: var(--heading); font-size: 13px; }
+.svc-sub { font-size: 10.5px; color: var(--muted); margin-top: 2px; font-family: var(--mono); }
+.svc-host { font-family: var(--mono); font-size: 12px; color: var(--accent); }
+.svc-port {
+  font-family: var(--mono); font-size: 11px;
+  background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2);
+  padding: 2px 8px; border-radius: 5px; color: var(--orange);
+}
+.status-pill {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: var(--mono); font-size: 9.5px; font-weight: 600;
+  padding: 3px 9px; border-radius: 99px;
+  text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;
+}
+.pill-green  { background: rgba(34,197,94,0.1);  color: var(--green);  border: 1px solid rgba(34,197,94,0.22);  }
+.pill-orange { background: rgba(245,158,11,0.1); color: var(--orange); border: 1px solid rgba(245,158,11,0.22); }
+.pill-red    { background: rgba(239,68,68,0.1);  color: var(--red);    border: 1px solid rgba(239,68,68,0.22);  }
+.pill-blue   { background: rgba(59,130,246,0.1); color: var(--accent); border: 1px solid rgba(59,130,246,0.22); }
+
+/* ── MODAL ── */
+.modal-overlay {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.65); backdrop-filter: blur(6px);
+  z-index: 200; align-items: center; justify-content: center; padding: 20px;
+}
+.modal-overlay.open { display: flex; }
+.modal {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: 18px;
+  width: 100%; max-width: 520px;
+  padding: 28px;
+  position: relative;
+  animation: fadeUp 0.22s cubic-bezier(0.16,1,0.3,1);
+  box-shadow: var(--shadow-lg);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.modal::before {
+  content: ''; position: absolute;
+  top: 0; left: 20%; right: 20%; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(59,130,246,0.4), transparent);
+}
+.modal-title { font-size: 16px; font-weight: 700; color: var(--heading); margin-bottom: 4px; }
+.modal-sub { font-size: 12px; color: var(--muted); margin-bottom: 22px; }
+.modal-close {
+  position: absolute; top: 18px; right: 18px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: 7px; width: 28px; height: 28px;
+  display: grid; place-items: center;
+  cursor: pointer; font-size: 13px; color: var(--muted);
+  transition: all 0.15s;
+}
+.modal-close:hover { color: var(--heading); border-color: var(--border2); }
+.form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+
+.subdomain-preview {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; padding: 10px 14px;
+  font-family: var(--mono); font-size: 12px; color: var(--green);
+  margin-top: 10px;
+}
+.subdomain-preview .dim { color: var(--muted); }
+
+/* ── PLATFORM PICKER ── */
+.platform-picker {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+.platform-card {
+  background: var(--surface); border: 2px solid var(--border);
+  border-radius: 12px; padding: 22px 16px;
+  text-align: center; cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
+  position: relative;
+}
+.platform-card:hover { border-color: var(--border2); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.25); }
+.platform-card.selected {
+  border-color: var(--accent); background: var(--accent-dim);
+  box-shadow: 0 0 0 1px var(--accent), 0 8px 24px rgba(59,130,246,0.12);
+}
+.platform-card.selected::after {
+  content: '✓'; position: absolute; top: 10px; right: 12px;
+  width: 18px; height: 18px; background: var(--accent);
+  border-radius: 50%; display: grid; place-items: center;
+  font-size: 9px; color: #fff; font-weight: 800;
+}
+.platform-icon { font-size: 32px; margin-bottom: 10px; }
+.platform-name { font-size: 13.5px; font-weight: 700; color: var(--heading); }
+.platform-sub { font-size: 10.5px; color: var(--muted); margin-top: 3px; font-family: var(--mono); }
+
+/* ── AGENT PREVIEW ── */
+.agent-preview { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); overflow: hidden; margin-bottom: 20px; }
+.agent-preview-header { padding: 13px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+.agent-preview-header h4 { font-size: 13px; font-weight: 600; color: var(--heading); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.file-ext {
+  font-family: var(--mono); font-size: 10px;
+  background: rgba(245,158,11,0.1); border: 1px solid rgba(245,158,11,0.2);
+  padding: 2px 8px; border-radius: 5px; color: var(--orange); flex-shrink: 0;
+}
+.agent-body { padding: 18px 20px; }
+.agent-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.col-label {
+  font-size: 9.5px; font-family: var(--mono); color: var(--muted);
+  letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 10px;
+}
+.config-summary {
+  background: var(--bg); border: 1px solid var(--border);
+  border-radius: 8px; padding: 14px;
+  font-family: var(--mono); font-size: 11px;
+  color: var(--text); line-height: 2;
+}
+.config-summary .k { color: var(--muted); }
+.config-summary .v { color: var(--green); }
+.config-summary .v.b { color: var(--accent); }
+.feature-list { display: flex; flex-direction: column; gap: 9px; }
+.feature-item { display: flex; align-items: flex-start; gap: 9px; }
+.fi-icon {
+  width: 26px; height: 26px; flex-shrink: 0;
+  background: var(--surface2); border-radius: 6px;
+  display: grid; place-items: center; font-size: 12px;
+  border: 1px solid var(--border);
+}
+.fi-title { font-weight: 600; color: var(--heading); font-size: 12.5px; }
+.fi-sub { font-size: 10.5px; color: var(--muted); font-family: var(--mono); margin-top: 1px; }
+.download-footer {
+  display: flex; align-items: center; gap: 14px;
+  padding: 16px 20px;
+  background: rgba(34,197,94,0.05);
+  border-top: 1px solid rgba(34,197,94,0.12);
+}
+.download-footer p { font-size: 11px; color: var(--muted); flex: 1; font-family: var(--mono); }
+
+/* ── LOG TABLE ── */
+.log-filters { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-end; }
+.log-filters .field { margin: 0; flex: 1; min-width: 130px; }
+.log-legend { display: flex; align-items: center; gap: 14px; font-family: var(--mono); font-size: 11px; }
+.log-legend span { display: flex; align-items: center; gap: 5px; color: var(--muted); }
+.log-count { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+.log-count strong { color: var(--heading); }
+#log-tbody tr.log-success td:first-child { border-left: 2px solid var(--green); }
+#log-tbody tr.log-nochange td:first-child { border-left: 2px solid var(--accent); }
+#log-tbody tr.log-error td:first-child { border-left: 2px solid var(--red); }
+.pagination { display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 16px; }
+.page-btn {
+  width: 32px; height: 32px; border-radius: 7px;
+  display: grid; place-items: center;
+  font-family: var(--mono); font-size: 12px;
+  background: var(--surface); border: 1px solid var(--border);
+  color: var(--muted); cursor: pointer; transition: all 0.14s;
+}
+.page-btn:hover { border-color: var(--border2); color: var(--heading); }
+.page-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.page-btn:disabled { opacity: 0.3; cursor: default; }
+
+/* ── ANALYTICS / KPI ── */
+.kpi-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin-bottom: 20px; }
+.kpi-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: 16px 18px;
+  position: relative; overflow: hidden;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.kpi-card:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(0,0,0,0.2); }
+.kpi-card::after { content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 2px; }
+.kpi-val { font-family: var(--mono); font-size: 22px; font-weight: 700; line-height: 1; margin-bottom: 5px; }
+.kpi-label { font-size: 11.5px; color: var(--text2); font-weight: 500; margin-bottom: 3px; }
+.kpi-sub { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.charts-row-2 { display: grid; grid-template-columns: 1fr 280px; gap: 16px; margin-bottom: 16px; }
+.charts-row-3 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px; }
+.charts-row-4 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.uptime-row { padding: 10px 18px; border-bottom: 1px solid rgba(26,37,53,0.6); }
+.uptime-row:last-child { border-bottom: none; }
+.uptime-label { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; font-size: 12px; }
+.uptime-bar-track { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.uptime-bar-fill { height: 100%; border-radius: 99px; transition: width 1.2s cubic-bezier(0.16,1,0.3,1); }
+
+/* ── MISC ── */
+.divider { height: 1px; background: var(--border); margin: 18px 0; }
+.flex { display: flex; }
+.items-center { align-items: center; }
+.gap-2 { gap: 8px; }
+.gap-3 { gap: 12px; }
+.mt-2 { margin-top: 8px; }
+.mt-3 { margin-top: 12px; }
+.ml-auto { margin-left: auto; }
+.w-full { width: 100%; }
+.mono { font-family: var(--mono); }
+.text-muted { color: var(--muted); }
+.text-xs { font-size: 11px; }
+.text-sm { font-size: 12.5px; }
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+
+/* ── TOPBAR USER GROUP ── */
+.topbar-user {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.btn-logout {
+  width: 30px; height: 30px;
+  display: grid; place-items: center;
+  background: var(--surface2);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.18s;
+  flex-shrink: 0;
+}
+.btn-logout:hover {
+  background: rgba(239,68,68,0.12);
+  border-color: rgba(239,68,68,0.35);
+  color: var(--red);
+  box-shadow: 0 0 0 2px rgba(239,68,68,0.1);
+}
+
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ══════════════════════════════════════════
+   RESPONSIVE BREAKPOINTS
+══════════════════════════════════════════ */
+
+/* Large screens — wider sidebar */
+@media (min-width: 1400px) {
+  :root { --sidebar-w: 260px; }
+  .kpi-grid { grid-template-columns: repeat(5, 1fr); }
+}
+
+/* Medium desktop / small laptop */
+@media (max-width: 1200px) {
+  .kpi-grid { grid-template-columns: repeat(3, 1fr); }
+  .charts-row-2 { grid-template-columns: 1fr; }
+  .charts-row-3 { grid-template-columns: 1fr; }
+  .charts-row-4 { grid-template-columns: 1fr; }
+  .agent-cols { grid-template-columns: 1fr; }
+}
+
+/* Tablet */
+@media (max-width: 900px) {
+  :root { --sidebar-w: 240px; }
+  .setup-grid { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .page-body { padding: 20px 18px 36px; }
+  .topbar { padding: 0 16px; gap: 10px; }
+  .topbar-hamburger { display: flex; }
+
+  /* On tablet, sidebar is off-canvas */
+  .sidebar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 100vh;
+    transform: translateX(-100%);
+    z-index: 51;
+    box-shadow: var(--shadow-lg);
+  }
+  .sidebar.mobile-open { transform: translateX(0); }
+
+  .app-shell { flex-direction: column; }
+  .page-area { min-height: 100vh; }
+}
+
+/* Mobile phone */
+@media (max-width: 600px) {
+  .page-body { padding: 16px 14px 32px; }
+  .topbar { height: 52px; padding: 0 14px; gap: 8px; }
+  .topbar-actions .btn-sm { display: none; }
+  .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+  .kpi-val { font-size: 18px; }
+  .platform-picker { grid-template-columns: 1fr 1fr; }
+  .page-header h2 { font-size: 17px; }
+  .download-footer { flex-direction: column; align-items: stretch; }
+  .download-footer .btn-green { width: 100%; }
+  .domains-bar { gap: 6px; }
+  .domain-chip { font-size: 11px; padding: 4px 10px; }
+  .modal { padding: 22px 18px; }
+  .log-filters .field { min-width: 100%; }
+}
+
+/* Very small */
+@media (max-width: 380px) {
+  .login-box { padding: 32px 22px 28px; }
+  .kpi-grid { grid-template-columns: 1fr 1fr; }
+  .platform-picker { grid-template-columns: 1fr; }
+}
+
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════
+     SCREEN 1 — LOGIN
+══════════════════════ -->
+<div id="s-login" class="screen active">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="logo-icon">🌐</div>
+      <h1>DDNS Panel</h1>
+      <p>Self-hosted · AWS Lightsail</p>
+    </div>
+    <div class="field">
+      <label>Username</label>
+      <input type="text" value="admin" placeholder="admin">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" value="••••••••" placeholder="••••••••">
+    </div>
+    <button class="btn btn-primary btn-full" onclick="goTo('s-setup')" style="margin-top:8px;">
+      Sign In →
+    </button>
+    <div style="margin-top:16px; text-align:center; font-size:11px; color:var(--muted); font-family:var(--mono);">
+      First time? Setup wizard will guide you.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════
+     SCREEN 2 — CF SETUP
+══════════════════════ -->
+<div id="s-setup" class="screen">
+  <div class="app-shell">
+    <!-- Sidebar -->
+    <div class="sidebar-overlay" onclick="closeSidebar()"></div>
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">🌐</div>
+        <div>
+          <div class="sidebar-title">DDNS Panel</div>
+          <div class="sidebar-sub">v1.0 · Lightsail</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-group-label">Setup</div>
+        <div class="nav-item active" onclick="goTo('s-setup')">
+          <span class="nav-icon">🔑</span> Cloudflare Setup
+          <span class="nav-badge warn">!</span>
+        </div>
+        <div class="nav-group-label" style="margin-top:12px;">Management</div>
+        <div class="nav-item" onclick="goTo('s-services')">
+          <span class="nav-icon">⚡</span> Services
+        </div>
+        <div class="nav-item" onclick="goTo('s-download')">
+          <span class="nav-icon">📦</span> Download Agent
+        </div>
+        <div class="nav-item" onclick="goTo('s-logs')">
+          <span class="nav-icon">📋</span> Logs
+        </div>
+        <div class="nav-item" onclick="goTo('s-analytics')">
+          <span class="nav-icon">📊</span> Analytics
+        </div>
+      </nav>
+      <div class="sidebar-footer">
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);">
+          <div class="status-dot off"></div>
+          <span class="mono" style="font-size:11px;">Not configured</span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="page-area">
+      <div class="topbar">
+        <button class="topbar-hamburger" onclick="toggleSidebar()" aria-label="Menu"><span class="hb-mid"></span></button>
+        <span class="topbar-breadcrumb">/ <span>Setup</span> / Cloudflare</span>
+        <div class="avatar" title="admin">A</div>
+      </div>
+      <div class="page-body">
+        <div class="page-header">
+          <h2>🔑 Cloudflare API Configuration</h2>
+          <p>Connect your Cloudflare account to enable automatic DNS record updates.</p>
+        </div>
+
+        <div class="setup-grid">
+          <!-- Instructions -->
+          <div class="card">
+            <div class="card-header">
+              <div>
+                <h3>Step-by-step: Generate a compatible API Token</h3>
+                <p>Follow these exact steps to create a token with the right permissions</p>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="instruction-steps">
+
+                <div class="inst-step">
+                  <div class="inst-num">1</div>
+                  <div class="inst-content">
+                    <div class="inst-title">Log in to Cloudflare Dashboard</div>
+                    <div class="inst-desc">Go to your Cloudflare account and navigate to the API Tokens page.</div>
+                    <span class="inst-link" onclick="void(0)">🔗 dash.cloudflare.com/profile/api-tokens</span>
+                  </div>
+                </div>
+
+                <div class="inst-step">
+                  <div class="inst-num">2</div>
+                  <div class="inst-content">
+                    <div class="inst-title">Click "Create Token" → Use custom template</div>
+                    <div class="inst-desc">Scroll down and click <strong style="color:var(--heading)">Create Custom Token</strong> for fine-grained permissions.</div>
+                  </div>
+                </div>
+
+                <div class="inst-step">
+                  <div class="inst-num">3</div>
+                  <div class="inst-content">
+                    <div class="inst-title">Set these exact permissions</div>
+                    <div class="inst-desc">The token needs read access to list zones and edit access to update DNS records.</div>
+                    <div class="permissions-list">
+                      <div class="perm-item"><span class="check">✓</span> Zone → Zone → <strong>Read</strong></div>
+                      <div class="perm-item"><span class="check">✓</span> Zone → DNS → <strong>Edit</strong></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="inst-step">
+                  <div class="inst-num">4</div>
+                  <div class="inst-content">
+                    <div class="inst-title">Zone Resources: Include specific zone or All zones</div>
+                    <div class="inst-desc">For security, select only the domain(s) you'll use with this DDNS panel. Or "All zones" for convenience.</div>
+                  </div>
+                </div>
+
+                <div class="inst-step">
+                  <div class="inst-num">5</div>
+                  <div class="inst-content">
+                    <div class="inst-title">Create and copy the token</div>
+                    <div class="inst-desc">Cloudflare shows the token <strong style="color:var(--orange)">only once</strong>. Copy it immediately and paste it on the right.</div>
+                    <div class="code-block">
+                      <div class="dim"># Token format looks like:</div>
+                      <div>abc123xyz_AAABBBCCC-example-token-value</div>
+                    </div>
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          <!-- Token Input -->
+          <div style="display:flex;flex-direction:column;gap:16px;">
+            <div class="token-area">
+              <div class="token-status none">
+                ⚠ No token configured — DDNS inactive
+              </div>
+              <div style="padding:18px;">
+                <div class="field">
+                  <label>Cloudflare API Token</label>
+                  <textarea class="textarea-field" id="cf-token-input" placeholder="Paste your API token here..." rows="3"></textarea>
+                </div>
+                <div class="info-box">
+                  <span class="ico">🛡️</span>
+                  <span>Your token is stored encrypted on the server. It is never sent to clients or exposed in the GUI after saving.</span>
+                </div>
+                <button class="btn btn-primary btn-full mt-3" onclick="saveToken()">
+                  Verify & Save Token →
+                </button>
+              </div>
+            </div>
+
+            <div class="card">
+              <div class="card-header">
+                <div>
+                  <h3>What this system will do</h3>
+                  <p>Using your token, the server will</p>
+                </div>
+              </div>
+              <div class="card-body" style="display:flex;flex-direction:column;gap:10px;">
+                <div class="feature-item">
+                  <div class="fi-icon">🔍</div>
+                  <div class="fi-text">
+                    <div class="fi-title">Fetch your zones</div>
+                    <div class="fi-sub">List all domains on your account</div>
+                  </div>
+                </div>
+                <div class="feature-item">
+                  <div class="fi-icon">✏️</div>
+                  <div class="fi-text">
+                    <div class="fi-title">Update A/AAAA records</div>
+                    <div class="fi-sub">Whenever client IP changes</div>
+                  </div>
+                </div>
+                <div class="feature-item">
+                  <div class="fi-icon">🔒</div>
+                  <div class="fi-text">
+                    <div class="fi-title">Proxy status control</div>
+                    <div class="fi-sub">Orange cloud on/off per service</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════
+     SCREEN 3 — SERVICES
+══════════════════════ -->
+<div id="s-services" class="screen">
+  <div class="app-shell">
+    <div class="sidebar-overlay" onclick="closeSidebar()"></div>
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">🌐</div>
+        <div>
+          <div class="sidebar-title">DDNS Panel</div>
+          <div class="sidebar-sub">v1.0 · Lightsail</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-group-label">Setup</div>
+        <div class="nav-item" onclick="goTo('s-setup')">
+          <span class="nav-icon">🔑</span> Cloudflare Setup
+          <span class="nav-badge" style="background:var(--green);color:#000;">✓</span>
+        </div>
+        <div class="nav-group-label" style="margin-top:12px;">Management</div>
+        <div class="nav-item active" onclick="goTo('s-services')">
+          <span class="nav-icon">⚡</span> Services
+        </div>
+        <div class="nav-item" onclick="goTo('s-download')">
+          <span class="nav-icon">📦</span> Download Agent
+        </div>
+        <div class="nav-item" onclick="goTo('s-logs')">
+          <span class="nav-icon">📋</span> Logs
+        </div>
+        <div class="nav-item" onclick="goTo('s-analytics')">
+          <span class="nav-icon">📊</span> Analytics
+        </div>
+      </nav>
+      <div class="sidebar-footer">
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);">
+          <div class="status-dot"></div>
+          <span class="mono" style="font-size:11px;">DDNS Active</span>
+        </div>
+      </div>
+    </aside>
+
+    <div class="page-area">
+      <div class="topbar">
+        <button class="topbar-hamburger" onclick="toggleSidebar()" aria-label="Menu"><span class="hb-mid"></span></button>
+        <span class="topbar-breadcrumb">/ <span>Services</span></span>
+        <div class="topbar-actions ml-auto">
+          <button class="btn btn-ghost btn-sm">⟳ Refresh IPs</button>
+          <button class="btn btn-primary btn-sm" onclick="openModal()">+ Add Service</button>
+        </div>
+        <div class="topbar-user">
+          <div class="avatar" title="admin">A</div>
+          <button class="btn-logout" onclick="goTo('s-login')" title="Sign out">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="page-body">
+        <div class="page-header">
+          <h2>⚡ Services</h2>
+          <p>Each service maps a hostname/subdomain to a device's current public IP.</p>
+        </div>
+
+        <!-- Domain selector -->
+        <div class="domains-bar">
+          <span style="font-size:12px;color:var(--muted);font-family:var(--mono);margin-right:4px;">Zone:</span>
+          <div class="domain-chip active"><div class="dot"></div> mydomain.com</div>
+          <div class="domain-chip"><div class="dot"></div> homelab.io</div>
+          <button class="btn btn-ghost btn-sm">+ Add Domain</button>
+        </div>
+
+        <!-- Services table -->
+        <div class="card">
+          <div class="tbl-wrap"><table class="services-table">
+            <thead>
+              <tr>
+                <th>Service Name</th>
+                <th>Hostname / Record</th>
+                <th>Port</th>
+                <th>Current IP</th>
+                <th>Last Update</th>
+                <th>Status</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>
+                  <div class="svc-name">🏠 Home Network</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:var(--mono);">All traffic</div>
+                </td>
+                <td><span class="svc-host">home.mydomain.com</span></td>
+                <td>—</td>
+                <td><span class="mono text-xs" style="color:var(--text);">103.21.244.1</span></td>
+                <td><span class="text-xs text-muted mono">2 min ago</span></td>
+                <td><span class="status-pill pill-green">● Live</span></td>
+                <td>
+                  <div class="flex gap-2">
+                    <button class="btn btn-ghost btn-sm">Edit</button>
+                    <button class="btn btn-ghost btn-sm" onclick="goTo('s-download')">⬇ Agent</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="svc-name">🎮 Game Server</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:var(--mono);">Minecraft / Valheim</div>
+                </td>
+                <td><span class="svc-host">game.mydomain.com</span></td>
+                <td><span class="svc-port">25565</span></td>
+                <td><span class="mono text-xs" style="color:var(--text);">103.21.244.1</span></td>
+                <td><span class="text-xs text-muted mono">2 min ago</span></td>
+                <td><span class="status-pill pill-green">● Live</span></td>
+                <td>
+                  <div class="flex gap-2">
+                    <button class="btn btn-ghost btn-sm">Edit</button>
+                    <button class="btn btn-ghost btn-sm" onclick="goTo('s-download')">⬇ Agent</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="svc-name">📷 NAS / Camera</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:var(--mono);">Raspberry Pi</div>
+                </td>
+                <td><span class="svc-host">nas.mydomain.com</span></td>
+                <td><span class="svc-port">8080</span></td>
+                <td><span class="mono text-xs" style="color:var(--muted);">Waiting...</span></td>
+                <td><span class="text-xs text-muted mono">Never</span></td>
+                <td><span class="status-pill pill-orange">◌ Pending</span></td>
+                <td>
+                  <div class="flex gap-2">
+                    <button class="btn btn-ghost btn-sm">Edit</button>
+                    <button class="btn btn-ghost btn-sm" onclick="goTo('s-download')">⬇ Agent</button>
+                  </div>
+                </td>
+              </tr>
+              <tr>
+                <td>
+                  <div class="svc-name">💻 Dev Machine</div>
+                  <div style="font-size:11px;color:var(--muted);margin-top:2px;font-family:var(--mono);">Windows PC</div>
+                </td>
+                <td><span class="svc-host">dev.mydomain.com</span></td>
+                <td><span class="svc-port">3000</span></td>
+                <td><span class="mono text-xs" style="color:var(--muted);">Offline</span></td>
+                <td><span class="text-xs text-muted mono">3 hrs ago</span></td>
+                <td><span class="status-pill pill-red">✕ Offline</span></td>
+                <td>
+                  <div class="flex gap-2">
+                    <button class="btn btn-ghost btn-sm">Edit</button>
+                    <button class="btn btn-ghost btn-sm" onclick="goTo('s-download')">⬇ Agent</button>
+                  </div>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+</div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════
+     SCREEN 4 — DOWNLOAD
+══════════════════════ -->
+<div id="s-download" class="screen">
+  <div class="app-shell">
+    <div class="sidebar-overlay" onclick="closeSidebar()"></div>
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">🌐</div>
+        <div>
+          <div class="sidebar-title">DDNS Panel</div>
+          <div class="sidebar-sub">v1.0 · Lightsail</div>
+        </div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-group-label">Setup</div>
+        <div class="nav-item" onclick="goTo('s-setup')">
+          <span class="nav-icon">🔑</span> Cloudflare Setup
+          <span class="nav-badge" style="background:var(--green);color:#000;">✓</span>
+        </div>
+        <div class="nav-group-label" style="margin-top:12px;">Management</div>
+        <div class="nav-item" onclick="goTo('s-services')">
+          <span class="nav-icon">⚡</span> Services
+        </div>
+        <div class="nav-item active" onclick="goTo('s-download')">
+          <span class="nav-icon">📦</span> Download Agent
+        </div>
+        <div class="nav-item" onclick="goTo('s-logs')">
+          <span class="nav-icon">📋</span> Logs
+        </div>
+        <div class="nav-item" onclick="goTo('s-analytics')">
+          <span class="nav-icon">📊</span> Analytics
+        </div>
+      </nav>
+      <div class="sidebar-footer">
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);">
+          <div class="status-dot"></div>
+          <span class="mono" style="font-size:11px;">DDNS Active</span>
+        </div>
+      </div>
+    </aside>
+
+    <div class="page-area">
+      <div class="topbar">
+        <button class="topbar-hamburger" onclick="toggleSidebar()" aria-label="Menu"><span class="hb-mid"></span></button>
+        <span class="topbar-breadcrumb">/ <span>Download Agent</span></span>
+        <div class="topbar-user">
+          <div class="avatar" title="admin">A</div>
+          <button class="btn-logout" onclick="goTo('s-login')" title="Sign out">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="page-body">
+        <div class="page-header">
+          <h2>📦 Download DDNS Agent</h2>
+          <p>Pick your device type, select the service, and download a pre-configured installer.</p>
+        </div>
+
+        <!-- Step 1: Select service -->
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-header"><h3>Step 1 — Select Service</h3></div>
+          <div class="card-body">
+            <div class="flex gap-3 flex-wrap">
+              <div class="field" style="flex:1;min-width:200px;margin:0;">
+                <label>Service / Hostname</label>
+                <select class="select-field">
+                  <option>home.mydomain.com — Home Network</option>
+                  <option>game.mydomain.com — Game Server</option>
+                  <option>nas.mydomain.com — NAS / Camera</option>
+                  <option selected>dev.mydomain.com — Dev Machine</option>
+                </select>
+              </div>
+              <div class="field" style="width:180px;margin:0;">
+                <label>Check Interval</label>
+                <select class="select-field">
+                  <option>Every 1 minute</option>
+                  <option selected>Every 5 minutes</option>
+                  <option>Every 10 minutes</option>
+                  <option>Every 30 minutes</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 2: Pick platform -->
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-header"><h3>Step 2 — Choose Platform</h3></div>
+          <div class="card-body">
+            <div class="platform-picker">
+              <div class="platform-card" onclick="selectPlatform(this,'win')">
+                <div class="platform-icon">🪟</div>
+                <div class="platform-name">Windows</div>
+                <div class="platform-sub">.exe installer</div>
+              </div>
+              <div class="platform-card selected" onclick="selectPlatform(this,'win-ps')">
+                <div class="platform-icon">💠</div>
+                <div class="platform-name">Windows (Script)</div>
+                <div class="platform-sub">.ps1 + Task Scheduler</div>
+              </div>
+              <div class="platform-card" onclick="selectPlatform(this,'linux')">
+                <div class="platform-icon">🐧</div>
+                <div class="platform-name">Linux / Debian</div>
+                <div class="platform-sub">.sh + systemd</div>
+              </div>
+              <div class="platform-card" onclick="selectPlatform(this,'pi')">
+                <div class="platform-icon">🍓</div>
+                <div class="platform-name">Raspberry Pi</div>
+                <div class="platform-sub">.sh + systemd</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 3: Preview & Download -->
+        <div class="agent-preview">
+          <div class="agent-preview-header">
+            <h4 id="agent-file-name">📄 ddns-agent-dev-machine.ps1</h4>
+            <span class="file-ext" id="agent-file-ext">.ps1</span>
+          </div>
+          <div class="agent-body">
+            <div class="agent-cols">
+              <div>
+                <div class="col-label">EMBEDDED CONFIG</div>
+                <div class="config-summary">
+                  <div><span class="k">server    </span> <span class="v blue">https://ddns.yourdomain.com</span></div>
+                  <div><span class="k">hostname  </span> <span class="v">dev.mydomain.com</span></div>
+                  <div><span class="k">api_key   </span> <span class="v">sk_••••••••••••••••</span></div>
+                  <div><span class="k">interval  </span> <span class="v">300</span> <span class="k">sec</span></div>
+                  <div><span class="k">protocol  </span> <span class="v">IPv4 + IPv6</span></div>
+                </div>
+              </div>
+              <div>
+                <div class="col-label">WHAT THIS INSTALLER DOES</div>
+                <div class="feature-list">
+                  <div class="feature-item">
+                    <div class="fi-icon">🔧</div>
+                    <div class="fi-text">
+                      <div class="title">Auto-configures on first run</div>
+                      <div class="sub">No manual config needed</div>
+                    </div>
+                  </div>
+                  <div class="feature-item">
+                    <div class="fi-icon">🔄</div>
+                    <div class="fi-text">
+                      <div class="title">Registers as Scheduled Task</div>
+                      <div class="sub">Runs at startup + every 5 min</div>
+                    </div>
+                  </div>
+                  <div class="feature-item">
+                    <div class="fi-icon">🖥️</div>
+                    <div class="fi-text">
+                      <div class="title">System tray icon</div>
+                      <div class="sub">Shows ✓ active / ✕ error state</div>
+                    </div>
+                  </div>
+                  <div class="feature-item">
+                    <div class="fi-icon">⚡</div>
+                    <div class="fi-text">
+                      <div class="title">Starts on boot</div>
+                      <div class="sub">Persists across restarts</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="download-footer">
+            <div>
+              <div style="font-size:12px;font-weight:600;color:var(--heading);">Ready to download</div>
+              <p>Run as Administrator on the target machine</p>
+            </div>
+            <button class="btn btn-green" onclick="fakeDownload()">
+              ⬇ Download Agent
+            </button>
+          </div>
+        </div>
+
+        <div class="info-box" style="margin-top:0;">
+          <span class="ico">ℹ️</span>
+          <span>
+            <strong style="color:var(--heading);">How to install on Windows:</strong>
+            Right-click the downloaded <span style="font-family:var(--mono);color:var(--accent);">.ps1</span> file → "Run with PowerShell as Administrator". The script will install itself, register a startup task, and show a system tray icon confirming it's running.
+            <br><br>
+            <strong style="color:var(--heading);">On Linux:</strong>
+            Run <span style="font-family:var(--mono);color:var(--green);">sudo bash ddns-agent.sh install</span>. It registers a systemd service that starts on boot.
+          </span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════
+     ADD SERVICE MODAL
+══════════════════════ -->
+<div class="modal-overlay" id="add-modal">
+  <div class="modal">
+    <div class="modal-close" onclick="closeModal()">✕</div>
+    <div class="modal-title">Add New Service</div>
+    <div class="modal-sub">Define a hostname that maps to a device's public IP via DDNS</div>
+
+    <div class="field">
+      <label>Service Name</label>
+      <input type="text" class="field input" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;color:var(--heading);font-family:var(--mono);font-size:14px;outline:none;" placeholder="e.g. Home Server, Game PC, Pi Camera...">
+    </div>
+
+    <div class="form-row">
+      <div class="field">
+        <label>Domain</label>
+        <select class="select-field">
+          <option>mydomain.com</option>
+          <option>homelab.io</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>Subdomain</label>
+        <input type="text" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;color:var(--heading);font-family:var(--mono);font-size:13px;outline:none;" placeholder="e.g. home, nas, vpn" id="subdomain-input" oninput="updatePreview(this.value)">
+      </div>
+    </div>
+
+    <div class="subdomain-preview">
+      <span class="dim">Full hostname → </span>
+      <span id="preview-host" style="color:var(--accent);">home</span><span class="dim">.mydomain.com</span>
+    </div>
+
+    <div class="form-row" style="margin-top:16px;">
+      <div class="field">
+        <label>Port (optional)</label>
+        <input type="number" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;color:var(--heading);font-family:var(--mono);font-size:13px;outline:none;" placeholder="e.g. 8080">
+      </div>
+      <div class="field">
+        <label>Record Type</label>
+        <select class="select-field">
+          <option>A (IPv4)</option>
+          <option>AAAA (IPv6)</option>
+          <option>Both</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Cloudflare Proxy</label>
+      <select class="select-field">
+        <option>☁ Proxied (Orange Cloud — hides real IP)</option>
+        <option>🔵 DNS Only (direct, lower latency)</option>
+      </select>
+    </div>
+
+    <div class="divider"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" style="min-width:140px;" onclick="closeModal();goTo('s-services')">Create Service →</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ══════════════════════
+     SCREEN 5 — LOGS
+══════════════════════ -->
+<div id="s-logs" class="screen">
+  <div class="app-shell">
+    <div class="sidebar-overlay" onclick="closeSidebar()"></div>
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">🌐</div>
+        <div><div class="sidebar-title">DDNS Panel</div><div class="sidebar-sub">v1.0 · Lightsail</div></div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-group-label">Setup</div>
+        <div class="nav-item" onclick="goTo('s-setup')"><span class="nav-icon">🔑</span> Cloudflare Setup <span class="nav-badge" style="background:var(--green);color:#000;">✓</span></div>
+        <div class="nav-group-label" style="margin-top:12px;">Management</div>
+        <div class="nav-item" onclick="goTo('s-services')"><span class="nav-icon">⚡</span> Services</div>
+        <div class="nav-item" onclick="goTo('s-download')"><span class="nav-icon">📦</span> Download Agent</div>
+        <div class="nav-item active" onclick="goTo('s-logs')"><span class="nav-icon">📋</span> Logs</div>
+        <div class="nav-item" onclick="goTo('s-analytics')"><span class="nav-icon">📊</span> Analytics</div>
+      </nav>
+      <div class="sidebar-footer">
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);">
+          <div class="status-dot"></div><span class="mono" style="font-size:11px;">DDNS Active</span>
+        </div>
+      </div>
+    </aside>
+    <div class="page-area">
+      <div class="topbar">
+        <button class="topbar-hamburger" onclick="toggleSidebar()" aria-label="Menu"><span class="hb-mid"></span></button>
+        <span class="topbar-breadcrumb">/ <span>Logs</span></span>
+        <div class="topbar-actions ml-auto">
+          <button class="btn btn-ghost btn-sm" onclick="clearLogFilter()">Clear Filter</button>
+          <button class="btn btn-ghost btn-sm">⬇ Export CSV</button>
+        </div>
+        <div class="topbar-user">
+          <div class="avatar" title="admin">A</div>
+          <button class="btn-logout" onclick="goTo('s-login')" title="Sign out">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="page-body">
+        <div class="page-header">
+          <h2>📋 Update Logs</h2>
+          <p>Full history of every IP update attempt across all services.</p>
+        </div>
+
+        <!-- Filters -->
+        <div class="card" style="margin-bottom:20px;">
+          <div class="card-body" style="padding:16px 20px;">
+            <div style="display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end;">
+              <div class="field" style="margin:0;flex:1;min-width:140px;">
+                <label>Service</label>
+                <select class="select-field" id="log-filter-service" onchange="filterLogs()">
+                  <option value="">All Services</option>
+                  <option value="home">home.mydomain.com</option>
+                  <option value="game">game.mydomain.com</option>
+                  <option value="nas">nas.mydomain.com</option>
+                  <option value="dev">dev.mydomain.com</option>
+                </select>
+              </div>
+              <div class="field" style="margin:0;flex:1;min-width:130px;">
+                <label>Status</label>
+                <select class="select-field" id="log-filter-status" onchange="filterLogs()">
+                  <option value="">All Statuses</option>
+                  <option value="success">Success</option>
+                  <option value="no_change">No Change</option>
+                  <option value="error">Error</option>
+                </select>
+              </div>
+              <div class="field" style="margin:0;flex:1;min-width:130px;">
+                <label>Time Range</label>
+                <select class="select-field" id="log-filter-time" onchange="filterLogs()">
+                  <option>Last 24 hours</option>
+                  <option>Last 7 days</option>
+                  <option>Last 30 days</option>
+                  <option>All time</option>
+                </select>
+              </div>
+              <div class="field" style="margin:0;flex:2;min-width:180px;">
+                <label>Search IP / Host</label>
+                <input type="text" id="log-search" oninput="filterLogs()" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--heading);font-family:var(--mono);font-size:12px;outline:none;" placeholder="103.21... or home.my...">
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Log count summary -->
+        <div style="display:flex;gap:12px;margin-bottom:14px;flex-wrap:wrap;">
+          <div style="display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;color:var(--muted);">
+            <span id="log-count" style="color:var(--heading);font-weight:700;">24</span> entries shown
+          </div>
+          <div style="display:flex;gap:10px;margin-left:auto;">
+            <span style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;"><span style="color:var(--green);">●</span> <span style="color:var(--muted);">Success</span></span>
+            <span style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;"><span style="color:var(--accent);">●</span> <span style="color:var(--muted);">No Change</span></span>
+            <span style="display:flex;align-items:center;gap:5px;font-family:var(--mono);font-size:11px;"><span style="color:var(--red);">●</span> <span style="color:var(--muted);">Error</span></span>
+          </div>
+        </div>
+
+        <!-- Log Table -->
+        <div class="card">
+          <table class="services-table" id="log-table">
+            <thead>
+              <tr>
+                <th>Timestamp</th>
+                <th>Service</th>
+                <th>Old IP</th>
+                <th>New IP</th>
+                <th>Source</th>
+                <th>Duration</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="log-tbody"></tbody>
+          </table>
+        </div>
+
+        <div style="display:flex;justify-content:center;gap:8px;margin-top:16px;" id="log-pagination">
+          <button class="btn btn-ghost btn-sm" style="opacity:0.4;" disabled>← Prev</button>
+          <span class="btn btn-sm" style="background:var(--accent);color:#fff;cursor:default;">1</span>
+          <button class="btn btn-ghost btn-sm" onclick="void(0)">2</button>
+          <button class="btn btn-ghost btn-sm">3</button>
+          <button class="btn btn-ghost btn-sm">Next →</button>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════
+     SCREEN 6 — ANALYTICS
+══════════════════════ -->
+<div id="s-analytics" class="screen">
+  <div class="app-shell">
+    <div class="sidebar-overlay" onclick="closeSidebar()"></div>
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <div class="sidebar-logo">🌐</div>
+        <div><div class="sidebar-title">DDNS Panel</div><div class="sidebar-sub">v1.0 · Lightsail</div></div>
+      </div>
+      <nav class="sidebar-nav">
+        <div class="nav-group-label">Setup</div>
+        <div class="nav-item" onclick="goTo('s-setup')"><span class="nav-icon">🔑</span> Cloudflare Setup <span class="nav-badge" style="background:var(--green);color:#000;">✓</span></div>
+        <div class="nav-group-label" style="margin-top:12px;">Management</div>
+        <div class="nav-item" onclick="goTo('s-services')"><span class="nav-icon">⚡</span> Services</div>
+        <div class="nav-item" onclick="goTo('s-download')"><span class="nav-icon">📦</span> Download Agent</div>
+        <div class="nav-item" onclick="goTo('s-logs')"><span class="nav-icon">📋</span> Logs</div>
+        <div class="nav-item active" onclick="goTo('s-analytics')"><span class="nav-icon">📊</span> Analytics</div>
+      </nav>
+      <div class="sidebar-footer">
+        <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);">
+          <div class="status-dot"></div><span class="mono" style="font-size:11px;">DDNS Active</span>
+        </div>
+      </div>
+    </aside>
+    <div class="page-area">
+      <div class="topbar">
+        <button class="topbar-hamburger" onclick="toggleSidebar()" aria-label="Menu"><span class="hb-mid"></span></button>
+        <span class="topbar-breadcrumb">/ <span>Analytics</span></span>
+        <div class="topbar-actions ml-auto">
+          <select class="select-field" style="padding:7px 12px;font-size:12px;width:auto;border-radius:7px;">
+            <option>Last 7 days</option>
+            <option>Last 30 days</option>
+            <option>Last 90 days</option>
+          </select>
+        </div>
+        <div class="topbar-user">
+          <div class="avatar" title="admin">A</div>
+          <button class="btn-logout" onclick="goTo('s-login')" title="Sign out">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          </button>
+        </div>
+      </div>
+      <div class="page-body">
+        <div class="page-header">
+          <h2>📊 Analytics</h2>
+          <p>Usage statistics, health metrics and service-level breakdown.</p>
+        </div>
+
+        <!-- KPI row -->
+        <div class="kpi-grid" id="kpi-row">
+          <div class="kpi-card" data-val="4,821" data-label="Total Updates" data-sub="+12% vs last week" data-color="var(--accent)"></div>
+          <div class="kpi-card" data-val="4,703" data-label="Successful" data-sub="97.5% success rate" data-color="var(--green)"></div>
+          <div class="kpi-card" data-val="118" data-label="No-Change Skips" data-sub="IP was same" data-color="var(--muted)"></div>
+          <div class="kpi-card" data-val="31" data-label="Errors" data-sub="2.5% error rate" data-color="var(--red)"></div>
+          <div class="kpi-card" data-val="4" data-label="Active Services" data-sub="2 online now" data-color="var(--orange)"></div>
+        </div>
+
+        <!-- Row 1: Line chart + Pie -->
+        <div class="charts-row-2">
+          <div class="card">
+            <div class="card-header"><h3>📈 Update Activity — Last 7 Days</h3></div>
+            <div class="card-body" style="padding:20px 16px;">
+              <canvas id="chart-line" height="160"></canvas>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>🍩 Success vs Failed</h3></div>
+            <div class="card-body" style="display:flex;flex-direction:column;align-items:center;padding:20px;">
+              <canvas id="chart-donut" width="180" height="180"></canvas>
+              <div style="display:flex;flex-direction:column;gap:6px;margin-top:14px;width:100%;">
+                <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;">
+                  <span style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--green);"></span>Success</span>
+                  <span class="mono" style="color:var(--green);">97.5%</span>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;">
+                  <span style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--red);"></span>Error</span>
+                  <span class="mono" style="color:var(--red);">2.5%</span>
+                </div>
+                <div style="display:flex;align-items:center;justify-content:space-between;font-size:12px;">
+                  <span style="display:flex;align-items:center;gap:6px;"><span style="display:inline-block;width:10px;height:10px;border-radius:2px;background:var(--muted);"></span>No Change</span>
+                  <span class="mono" style="color:var(--muted);">Skip</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Row 2: Service bar + IP change freq -->
+        <div class="charts-row-3">
+          <div class="card">
+            <div class="card-header"><h3>🏋 Service-wise Load</h3></div>
+            <div class="card-body"><canvas id="chart-bar" height="180"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>🌡 IP Change Frequency</h3></div>
+            <div class="card-body"><canvas id="chart-heatmap" height="180"></canvas></div>
+          </div>
+        </div>
+
+        <!-- Row 3: Avg response time + uptime table -->
+        <div class="charts-row-4">
+          <div class="card">
+            <div class="card-header"><h3>⚡ Avg DNS Update Latency (ms)</h3></div>
+            <div class="card-body"><canvas id="chart-latency" height="160"></canvas></div>
+          </div>
+          <div class="card">
+            <div class="card-header"><h3>🟢 Service Uptime (7d)</h3></div>
+            <div class="card-body" style="padding:8px 0;">
+              <div id="uptime-rows"></div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+/* KPI card */
+.kpi-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 18px 20px;
+  position: relative;
+  overflow: hidden;
+  transition: transform 0.2s;
+}
+.kpi-card:hover { transform: translateY(-2px); }
+.kpi-val {
+  font-family: var(--mono);
+  font-size: 26px;
+  font-weight: 700;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+.kpi-label { font-size: 12px; color: var(--muted); font-weight: 500; margin-bottom: 4px; }
+.kpi-sub { font-family: var(--mono); font-size: 10px; color: var(--muted); }
+.kpi-accent-bar {
+  position: absolute;
+  bottom: 0; left: 0; right: 0; height: 2px;
+}
+/* Uptime bar */
+.uptime-row { padding: 10px 20px; border-bottom: 1px solid rgba(28,42,58,0.5); }
+.uptime-row:last-child { border-bottom: none; }
+.uptime-label { display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;font-size:12px; }
+.uptime-bar-track { height: 5px; background: var(--border); border-radius: 99px; overflow: hidden; }
+.uptime-bar-fill { height: 100%; border-radius: 99px; transition: width 1s ease; }
+/* Log row color */
+.log-success td:first-child { border-left: 2px solid var(--green); }
+.log-nochange td:first-child { border-left: 2px solid var(--accent); }
+.log-error td:first-child { border-left: 2px solid var(--red); }
+</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+/* ─── NAVIGATION ─── */
+const SCREENS = ['s-login','s-setup','s-services','s-download','s-logs','s-analytics'];
+
+function goTo(id) {
+  SCREENS.forEach(s => {
+    const el = document.getElementById(s);
+    if (el) el.classList.remove('active');
+  });
+  const target = document.getElementById(id);
+  if (target) { target.classList.add('active'); window.scrollTo(0,0); }
+  if (id === 's-analytics') setTimeout(initCharts, 80);
+  if (id === 's-logs') initLogs();
+  closeSidebar();
+}
+
+/* ─── MOBILE SIDEBAR ─── */
+function toggleSidebar() {
+  // All sidebars in active screen
+  const active = document.querySelector('.screen.active');
+  if (!active) return;
+  const sidebar = active.querySelector('.sidebar');
+  const overlay = active.querySelector('.sidebar-overlay');
+  if (!sidebar) return;
+  const isOpen = sidebar.classList.contains('mobile-open');
+  if (isOpen) {
+    sidebar.classList.remove('mobile-open');
+    if (overlay) overlay.classList.remove('open');
+    document.body.style.overflow = '';
+  } else {
+    sidebar.classList.add('mobile-open');
+    if (overlay) overlay.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+function closeSidebar() {
+  document.querySelectorAll('.sidebar').forEach(s => s.classList.remove('mobile-open'));
+  document.querySelectorAll('.sidebar-overlay').forEach(o => o.classList.remove('open'));
+  document.body.style.overflow = '';
+}
+
+// Close sidebar on escape key
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeSidebar(); closeModal(); } });
+
+/* ─── LOGIN / SETUP ─── */
+function saveToken() {
+  const token = document.getElementById('cf-token-input').value.trim();
+  const status = document.querySelector('.token-status');
+  if (!token) { status.className='token-status none'; status.textContent='⚠ Please paste your API token first'; return; }
+  status.className='token-status'; status.innerHTML='<span>⟳</span> Verifying token with Cloudflare...';
+  setTimeout(() => {
+    status.textContent='✓ Token verified — 2 zones found: mydomain.com, homelab.io';
+    setTimeout(() => goTo('s-services'), 800);
+  }, 1400);
+}
+
+function openModal() { document.getElementById('add-modal').classList.add('open'); }
+function closeModal() { document.getElementById('add-modal').classList.remove('open'); }
+document.getElementById('add-modal').addEventListener('click', function(e){ if(e.target===this) closeModal(); });
+function updatePreview(val) { document.getElementById('preview-host').textContent = val||'subdomain'; }
+
+function selectPlatform(el,type) {
+  document.querySelectorAll('.platform-card').forEach(c=>c.classList.remove('selected'));
+  el.classList.add('selected');
+  const names = {'win':['ddns-agent-dev-machine-setup.exe','.exe'],'win-ps':['ddns-agent-dev-machine.ps1','.ps1'],'linux':['ddns-agent-dev-machine.sh','.sh'],'pi':['ddns-agent-dev-machine-pi.sh','.sh']};
+  document.getElementById('agent-file-name').textContent='📄 '+names[type][0];
+  document.getElementById('agent-file-ext').textContent=names[type][1];
+}
+
+function fakeDownload() {
+  const btn = event.target; btn.textContent='⟳ Preparing...'; btn.disabled=true;
+  setTimeout(() => { btn.textContent='✓ Downloaded!'; btn.style.background='#16a34a';
+    setTimeout(() => { btn.textContent='⬇ Download Agent'; btn.style.background=''; btn.disabled=false; }, 2000);
+  }, 900);
+}
+
+/* ─── LOGS DATA ─── */
+const LOG_DATA = [
+  {ts:'2025-03-04 14:32:01',svc:'home',host:'home.mydomain.com',old:'103.21.244.0',ip:'103.21.244.1',src:'Windows Agent',ms:142,status:'success'},
+  {ts:'2025-03-04 14:27:01',svc:'game',host:'game.mydomain.com',old:'103.21.244.1',ip:'103.21.244.1',src:'Linux Agent',ms:0,status:'no_change'},
+  {ts:'2025-03-04 14:22:01',svc:'nas',host:'nas.mydomain.com',old:'—',ip:'—',src:'Pi Agent',ms:0,status:'error'},
+  {ts:'2025-03-04 14:17:01',svc:'home',host:'home.mydomain.com',old:'103.21.244.1',ip:'103.21.244.1',src:'Windows Agent',ms:0,status:'no_change'},
+  {ts:'2025-03-04 13:55:12',svc:'dev',host:'dev.mydomain.com',old:'45.33.12.7',ip:'45.33.12.8',src:'Windows Agent',ms:188,status:'success'},
+  {ts:'2025-03-04 13:50:12',svc:'game',host:'game.mydomain.com',old:'103.21.244.1',ip:'103.21.244.1',src:'Linux Agent',ms:0,status:'no_change'},
+  {ts:'2025-03-04 13:45:00',svc:'home',host:'home.mydomain.com',old:'103.21.240.5',ip:'103.21.244.0',src:'Windows Agent',ms:209,status:'success'},
+  {ts:'2025-03-04 13:40:00',svc:'nas',host:'nas.mydomain.com',old:'—',ip:'—',src:'Pi Agent',ms:0,status:'error'},
+  {ts:'2025-03-04 13:35:00',svc:'dev',host:'dev.mydomain.com',old:'45.33.12.6',ip:'45.33.12.7',src:'Windows Agent',ms:164,status:'success'},
+  {ts:'2025-03-04 13:30:00',svc:'game',host:'game.mydomain.com',old:'103.21.244.0',ip:'103.21.244.1',src:'Linux Agent',ms:177,status:'success'},
+  {ts:'2025-03-04 13:25:00',svc:'home',host:'home.mydomain.com',old:'103.21.244.0',ip:'103.21.244.0',src:'Windows Agent',ms:0,status:'no_change'},
+  {ts:'2025-03-04 13:20:00',svc:'nas',host:'nas.mydomain.com',old:'—',ip:'—',src:'Pi Agent',ms:0,status:'error'},
+  {ts:'2025-03-04 12:58:00',svc:'dev',host:'dev.mydomain.com',old:'45.33.12.5',ip:'45.33.12.6',src:'Windows Agent',ms:195,status:'success'},
+  {ts:'2025-03-04 12:45:00',svc:'home',host:'home.mydomain.com',old:'103.21.240.0',ip:'103.21.244.0',src:'Windows Agent',ms:231,status:'success'},
+  {ts:'2025-03-04 12:30:00',svc:'game',host:'game.mydomain.com',old:'103.21.244.0',ip:'103.21.244.0',src:'Linux Agent',ms:0,status:'no_change'},
+  {ts:'2025-03-04 12:15:00',svc:'home',host:'home.mydomain.com',old:'103.21.240.0',ip:'103.21.240.0',src:'Windows Agent',ms:0,status:'no_change'},
+  {ts:'2025-03-04 12:00:00',svc:'dev',host:'dev.mydomain.com',old:'45.33.12.4',ip:'45.33.12.5',src:'Windows Agent',ms:170,status:'success'},
+  {ts:'2025-03-04 11:45:00',svc:'nas',host:'nas.mydomain.com',old:'—',ip:'—',src:'Pi Agent',ms:0,status:'error'},
+  {ts:'2025-03-04 11:30:00',svc:'game',host:'game.mydomain.com',old:'103.21.244.0',ip:'103.21.244.0',src:'Linux Agent',ms:0,status:'no_change'},
+  {ts:'2025-03-04 11:15:00',svc:'home',host:'home.mydomain.com',old:'103.21.236.1',ip:'103.21.240.0',src:'Windows Agent',ms:218,status:'success'},
+  {ts:'2025-03-04 11:00:00',svc:'dev',host:'dev.mydomain.com',old:'45.33.12.3',ip:'45.33.12.4',src:'Windows Agent',ms:183,status:'success'},
+  {ts:'2025-03-04 10:45:00',svc:'home',host:'home.mydomain.com',old:'103.21.236.1',ip:'103.21.236.1',src:'Windows Agent',ms:0,status:'no_change'},
+  {ts:'2025-03-04 10:30:00',svc:'game',host:'game.mydomain.com',old:'103.21.244.0',ip:'103.21.244.0',src:'Linux Agent',ms:0,status:'no_change'},
+  {ts:'2025-03-04 10:15:00',svc:'nas',host:'nas.mydomain.com',old:'—',ip:'—',src:'Pi Agent',ms:0,status:'error'},
+];
+
+function renderLogs(data) {
+  const tbody = document.getElementById('log-tbody');
+  if (!tbody) return;
+  document.getElementById('log-count').textContent = data.length;
+  tbody.innerHTML = data.map(r => {
+    const cls = r.status==='success'?'log-success':r.status==='no_change'?'log-nochange':'log-error';
+    const pill = r.status==='success'?'pill-green':r.status==='no_change'?'<span class="status-pill" style="background:rgba(59,130,246,0.1);color:var(--accent);border:1px solid rgba(59,130,246,0.25);font-family:var(--mono);font-size:10px;padding:3px 10px;border-radius:99px;">◌ No Change</span>':'pill-red';
+    const statusHtml = r.status==='success'?'<span class="status-pill pill-green">✓ Success</span>':
+                       r.status==='no_change'?'<span class="status-pill" style="background:rgba(59,130,246,0.1);color:var(--accent);border:1px solid rgba(59,130,246,0.25);font-family:var(--mono);font-size:10px;padding:3px 10px;border-radius:99px;">◌ No Change</span>':
+                       '<span class="status-pill pill-red">✕ Error</span>';
+    const msHtml = r.ms>0?`<span class="mono" style="font-size:11px;">${r.ms}ms</span>`:`<span style="color:var(--muted);font-size:11px;">—</span>`;
+    const oldHtml = r.old==='—'?`<span style="color:var(--muted);">—</span>`:`<span class="mono" style="font-size:11px;color:var(--muted);">${r.old}</span>`;
+    const newHtml = r.ip==='—'?`<span style="color:var(--red);">—</span>`:`<span class="mono" style="font-size:11px;color:var(--text);">${r.ip}</span>`;
+    return `<tr class="${cls}">
+      <td><span class="mono" style="font-size:11px;color:var(--muted);">${r.ts}</span></td>
+      <td><span class="svc-host" style="font-size:12px;">${r.host}</span></td>
+      <td>${oldHtml}</td>
+      <td>${newHtml}</td>
+      <td><span style="font-size:11px;color:var(--muted);">${r.src}</span></td>
+      <td>${msHtml}</td>
+      <td>${statusHtml}</td>
+    </tr>`;
+  }).join('');
+}
+
+function filterLogs() {
+  const svc = document.getElementById('log-filter-service').value;
+  const st  = document.getElementById('log-filter-status').value;
+  const q   = (document.getElementById('log-search').value||'').toLowerCase();
+  renderLogs(LOG_DATA.filter(r =>
+    (!svc || r.svc === svc) &&
+    (!st  || r.status === st) &&
+    (!q   || r.host.includes(q) || r.ip.includes(q) || r.old.includes(q))
+  ));
+}
+
+function clearLogFilter() {
+  document.getElementById('log-filter-service').value='';
+  document.getElementById('log-filter-status').value='';
+  document.getElementById('log-search').value='';
+  renderLogs(LOG_DATA);
+}
+
+function initLogs() { renderLogs(LOG_DATA); }
+
+/* ─── KPI CARDS ─── */
+function initKPIs() {
+  document.querySelectorAll('.kpi-card').forEach(card => {
+    const color = card.dataset.color;
+    card.innerHTML = `
+      <div class="kpi-val" style="color:${color}">${card.dataset.val}</div>
+      <div class="kpi-label">${card.dataset.label}</div>
+      <div class="kpi-sub">${card.dataset.sub}</div>
+      <div class="kpi-accent-bar" style="background:${color};opacity:0.5;"></div>
+    `;
+  });
+}
+initKPIs();
+
+/* ─── CHARTS ─── */
+Chart.defaults.color = '#4a6785';
+Chart.defaults.borderColor = '#1c2a3a';
+Chart.defaults.font.family = "'IBM Plex Mono', monospace";
+Chart.defaults.font.size = 10;
+
+let chartsInited = false;
+function initCharts() {
+  if (chartsInited) return;
+  chartsInited = true;
+
+  const days = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+  /* Line — activity */
+  new Chart(document.getElementById('chart-line'), {
+    type: 'line',
+    data: {
+      labels: days,
+      datasets: [
+        { label:'Success', data:[620,580,710,495,830,640,828], borderColor:'#22c55e', backgroundColor:'rgba(34,197,94,0.07)', tension:0.4, fill:true, pointRadius:3, pointBackgroundColor:'#22c55e' },
+        { label:'Error',   data:[18,12,22,9,14,8,16],          borderColor:'#ef4444', backgroundColor:'rgba(239,68,68,0.05)', tension:0.4, fill:true, pointRadius:3, pointBackgroundColor:'#ef4444' },
+        { label:'No Change',data:[90,70,85,60,100,80,95],      borderColor:'#3b82f6', backgroundColor:'rgba(59,130,246,0.05)', tension:0.4, fill:true, pointRadius:3, pointBackgroundColor:'#3b82f6' },
+      ]
+    },
+    options: { responsive:true, plugins:{ legend:{ labels:{ boxWidth:8, color:'#4a6785' } } }, scales:{ x:{ grid:{ color:'#1c2a3a' } }, y:{ grid:{ color:'#1c2a3a' } } } }
+  });
+
+  /* Donut — success vs fail */
+  new Chart(document.getElementById('chart-donut'), {
+    type: 'doughnut',
+    data: {
+      labels:['Success','Error','No Change'],
+      datasets:[{ data:[4703,118,31], backgroundColor:['#22c55e','#ef4444','#3b82f6'], borderColor:'#0d1117', borderWidth:3, hoverOffset:6 }]
+    },
+    options: { responsive:false, cutout:'72%', plugins:{ legend:{ display:false } } }
+  });
+
+  /* Bar — service load */
+  new Chart(document.getElementById('chart-bar'), {
+    type: 'bar',
+    data: {
+      labels:['home.mydomain','game.mydomain','nas.mydomain','dev.mydomain'],
+      datasets:[
+        { label:'Success', data:[2100,1400,200,1000], backgroundColor:'rgba(34,197,94,0.7)', borderRadius:4, borderSkipped:false },
+        { label:'Error',   data:[5,8,18,8],            backgroundColor:'rgba(239,68,68,0.7)', borderRadius:4, borderSkipped:false },
+      ]
+    },
+    options: { responsive:true, plugins:{ legend:{ labels:{ boxWidth:8 } } }, scales:{ x:{ stacked:true, grid:{ color:'#1c2a3a' } }, y:{ stacked:true, grid:{ color:'#1c2a3a' } } } }
+  });
+
+  /* Heatmap-style — IP change frequency (using bar as grouped hours) */
+  new Chart(document.getElementById('chart-heatmap'), {
+    type: 'bar',
+    data: {
+      labels:['00','02','04','06','08','10','12','14','16','18','20','22'],
+      datasets:[
+        { label:'home', data:[2,1,0,0,3,4,5,6,4,3,2,1],  backgroundColor:'rgba(59,130,246,0.6)', borderRadius:3 },
+        { label:'game', data:[1,0,0,1,2,3,4,3,2,3,1,1],  backgroundColor:'rgba(34,197,94,0.5)', borderRadius:3 },
+        { label:'dev',  data:[0,0,0,0,1,2,4,5,3,2,0,0],  backgroundColor:'rgba(245,158,11,0.5)', borderRadius:3 },
+      ]
+    },
+    options: { responsive:true, plugins:{ legend:{ labels:{ boxWidth:8 } }, title:{ display:true, text:'Updates per hour of day', color:'#4a6785', font:{size:10} } }, scales:{ x:{ stacked:true, grid:{ color:'#1c2a3a' }, title:{display:true,text:'Hour (UTC)',color:'#4a6785'} }, y:{ stacked:true, grid:{ color:'#1c2a3a' } } } }
+  });
+
+  /* Line — latency */
+  new Chart(document.getElementById('chart-latency'), {
+    type: 'line',
+    data: {
+      labels: days,
+      datasets:[
+        { label:'home',  data:[145,160,132,178,141,155,142], borderColor:'#3b82f6', tension:0.4, pointRadius:3, fill:false },
+        { label:'game',  data:[175,168,190,160,172,180,177], borderColor:'#22c55e', tension:0.4, pointRadius:3, fill:false },
+        { label:'dev',   data:[185,177,200,168,192,178,188], borderColor:'#f59e0b', tension:0.4, pointRadius:3, fill:false },
+      ]
+    },
+    options: { responsive:true, plugins:{ legend:{ labels:{ boxWidth:8 } } }, scales:{ x:{ grid:{color:'#1c2a3a'} }, y:{ grid:{color:'#1c2a3a'}, title:{display:true,text:'ms',color:'#4a6785'} } } }
+  });
+
+  /* Uptime bars */
+  const uptimes = [
+    { name:'home.mydomain.com', pct:99.8, color:'#22c55e' },
+    { name:'game.mydomain.com', pct:99.2, color:'#22c55e' },
+    { name:'nas.mydomain.com',  pct:61.0, color:'#ef4444' },
+    { name:'dev.mydomain.com',  pct:87.4, color:'#f59e0b' },
+  ];
+  document.getElementById('uptime-rows').innerHTML = uptimes.map(u => `
+    <div class="uptime-row">
+      <div class="uptime-label">
+        <span style="font-size:12px;color:var(--text);">${u.name}</span>
+        <span class="mono" style="font-size:12px;color:${u.color};">${u.pct}%</span>
+      </div>
+      <div class="uptime-bar-track">
+        <div class="uptime-bar-fill" style="width:${u.pct}%;background:${u.color};"></div>
+      </div>
+    </div>
+  `).join('');
+}
+</script>
+</body>
+</html>

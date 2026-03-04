@@ -1,0 +1,7 @@
+services:
+  nginx:
+    volumes:
+      - ./nginx/conf.d/local/:/etc/nginx/templates/
+      - frontend_build:/usr/share/nginx/html:ro
+    ports:
+      - "80:80"

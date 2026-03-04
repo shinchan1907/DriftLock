@@ -1,0 +1,157 @@
+#!/bin/bash
+set -euo pipefail
+
+# ── Config ────────────────────────────────────────────────
+DRIFTLOCK_SERVER="{{SERVER_URL}}"
+SERVICE_API_KEY="{{API_KEY}}"
+HOSTNAME_FULL="{{HOSTNAME}}"
+CHECK_INTERVAL={{CHECK_INTERVAL}}
+AGENT_VERSION="{{AGENT_VERSION}}"
+PLATFORM="{{PLATFORM}}"
+SERVICE_NAME="{{SERVICE_NAME}}"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+require_root() {
+    if [[ $EUID -ne 0 ]]; then
+       echo -e "${RED}Error: This script must be run as root${NC}"
+       exit 1
+    fi
+}
+
+detect_ip() {
+    local ip
+    ip=$(curl -sf --max-time 5 https://api.ipify.org || curl -sf --max-time 5 https://ifconfig.me || curl -sf --max-time 5 https://icanhazip.com || echo "")
+    echo "$ip"
+}
+
+send_update() {
+    local current_ip=$1
+    local response
+    response=$(curl -s -X POST "${DRIFTLOCK_SERVER}/api/update" \
+        -H "X-API-Key: ${SERVICE_API_KEY}" \
+        -H "X-Agent-Version: ${AGENT_VERSION}" \
+        -H "X-Agent-Platform: ${PLATFORM}" \
+        -H "Content-Type: application/json" \
+        -d "{\"ip\": \"${current_ip}\"}")
+    
+    if echo "$response" | grep -q '"status":"success"'; then
+        return 0
+    elif echo "$response" | grep -q '"status":"no_change"'; then
+        return 0
+    else
+        echo -e "${RED}Update failed: $response${NC}"
+        return 1
+    fi
+}
+
+run_check() {
+    local data_dir="/var/lib/driftlock/${SERVICE_NAME}"
+    local log_file="/var/log/driftlock/${SERVICE_NAME}.log"
+    local last_ip_file="${data_dir}/last_ip"
+    
+    mkdir -p "$data_dir"
+    mkdir -p "$(dirname "$log_file")"
+    
+    local current_ip
+    current_ip=$(detect_ip)
+    
+    if [[ -z "$current_ip" ]]; then
+        echo "$(date '+%Y-%m-%d %H:%M:%S') [ERROR] Could not detect public IP" >> "$log_file"
+        return
+    fi
+    
+    local last_ip=""
+    if [[ -f "$last_ip_file" ]]; then
+        last_ip=$(cat "$last_ip_file")
+    fi
+    
+    if [[ "$current_ip" != "$last_ip" ]]; then
+        if send_update "$current_ip"; then
+            echo "$current_ip" > "$last_ip_file"
+            echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] IP updated to $current_ip" >> "$log_file"
+        else
+            echo "$(date '+%Y-%m-%d %H:%M:%S') [ERROR] Failed to update IP to $current_ip" >> "$log_file"
+        fi
+    else
+        echo "$(date '+%Y-%m-%d %H:%M:%S') [INFO] IP unchanged ($current_ip)" >> "$log_file"
+    fi
+    
+    # Rotate log if > 1000 lines
+    if [[ $(wc -l < "$log_file") -gt 1000 ]]; then
+        tail -n 500 "$log_file" > "${log_file}.tmp" && mv "${log_file}.tmp" "$log_file"
+    fi
+}
+
+install() {
+    echo -e "${BLUE}Installing Driftlock Agent: ${HOSTNAME_FULL}...${NC}"
+    
+    if ! id -u driftlock >/dev/null 2>&1; then
+        useradd -r -s /usr/sbin/nologin driftlock
+    fi
+    
+    mkdir -p "/var/lib/driftlock/${SERVICE_NAME}"
+    mkdir -p "/var/log/driftlock"
+    
+    cp "$0" "/usr/local/bin/driftlock-${SERVICE_NAME}"
+    chmod 750 "/usr/local/bin/driftlock-${SERVICE_NAME}"
+    chown driftlock:driftlock "/usr/local/bin/driftlock-${SERVICE_NAME}"
+    
+    # Systemd Service
+    cat <<EOF > "/etc/systemd/system/driftlock-${SERVICE_NAME}.service"
+[Unit]
+Description=Driftlock DDNS Agent - ${HOSTNAME_FULL}
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/driftlock-${SERVICE_NAME} --daemon
+Restart=always
+RestartSec=10
+User=driftlock
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=driftlock-${SERVICE_NAME}
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+    # Systemd Timer
+    cat <<EOF > "/etc/systemd/system/driftlock-${SERVICE_NAME}.timer"
+[Unit]
+Description=Driftlock DDNS Timer - ${HOSTNAME_FULL}
+
+[Timer]
+OnBootSec=30
+OnUnitActiveSec=${CHECK_INTERVAL}s
+Unit=driftlock-${SERVICE_NAME}.service
+
+[Install]
+WantedBy=timers.target
+EOF
+
+    systemctl daemon-reload
+    systemctl enable --now "driftlock-${SERVICE_NAME}.timer"
+    systemctl enable --now "driftlock-${SERVICE_NAME}.service"
+    
+    echo -e "${GREEN}✓ Driftlock Agent installed and started!${NC}"
+    echo -e "Logs: journalctl -u driftlock-${SERVICE_NAME}"
+}
+
+if [[ "${1:-}" == "--daemon" ]]; then
+    while true; do
+        run_check
+        sleep "$CHECK_INTERVAL"
+    done
+elif [[ "${1:-}" == "--check" ]]; then
+    run_check
+else
+    require_root
+    install
+fi

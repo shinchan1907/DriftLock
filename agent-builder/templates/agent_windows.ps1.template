@@ -1,0 +1,121 @@
+#Requires -Version 5.1
+
+# ── Config ────────────────────────────────────────────────
+$DRIFTLOCK_SERVER = "{{SERVER_URL}}"
+$SERVICE_API_KEY  = "{{API_KEY}}"
+$HOSTNAME_FULL    = "{{HOSTNAME}}"
+$CHECK_INTERVAL   = {{CHECK_INTERVAL}}
+$AGENT_VERSION    = "{{AGENT_VERSION}}"
+$SERVICE_NAME     = "{{SERVICE_NAME}}"
+
+# Self-elevation
+if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]"Administrator")) {
+    $arguments = "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
+    Start-Process PowerShell -ArgumentList $arguments -Verb RunAs
+    exit
+}
+
+$AppData = "$env:APPDATA\Driftlock\$SERVICE_NAME"
+$LogFile = "$AppData\agent.log"
+$LastIpFile = "$AppData\last_ip.txt"
+
+if (!(Test-Path $AppData)) { New-Item -Path $AppData -ItemType Directory -Force }
+
+function Write-Log {
+    param([string]$Level, [string]$Message)
+    $Timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
+    $LogLine = "$Timestamp [$Level] $Message"
+    Add-Content -Path $LogFile -Value $LogLine
+    
+    # Trim log to 1000 lines
+    $content = Get-Content $LogFile
+    if ($content.Count -gt 1000) {
+        $content | Select-Object -Last 1000 | Set-Content $LogFile
+    }
+}
+
+function Get-PublicIP {
+    $sources = @("https://api.ipify.org", "https://ifconfig.me", "https://icanhazip.com")
+    foreach ($source in $sources) {
+        try {
+            return (Invoke-RestMethod -Uri $source -TimeoutSec 5).Trim()
+        } catch {
+            continue
+        }
+    }
+    return ""
+}
+
+function Send-Update {
+    param([string]$currentIp)
+    $headers = @{
+        "X-API-Key" = $SERVICE_API_KEY
+        "X-Agent-Version" = $AGENT_VERSION
+        "X-Agent-Platform" = "windows-ps1"
+        "Content-Type" = "application/json"
+    }
+    $body = @{ ip = $currentIp } | ConvertTo-Json
+    
+    try {
+        $response = Invoke-RestMethod -Uri "$DRIFTLOCK_SERVER/api/update" -Method Post -Headers $headers -Body $body
+        return ($response.status -eq "success" -or $response.status -eq "no_change")
+    } catch {
+        Write-Log ERROR "Update API call failed: $_"
+        return $false
+    }
+}
+
+function Invoke-Check {
+    $currentIp = Get-PublicIP
+    if ([string]::IsNullOrWhiteSpace($currentIp)) {
+        Write-Log ERROR "Could not detect public IP"
+        return
+    }
+    
+    $lastIp = ""
+    if (Test-Path $LastIpFile) { $lastIp = Get-Content $LastIpFile }
+    
+    if ($currentIp -ne $lastIp) {
+        if (Send-Update $currentIp) {
+            $currentIp | Set-Content $LastIpFile
+            Write-Log INFO "IP updated to $currentIp"
+        } else {
+            Write-Log ERROR "Failed to update IP to $currentIp"
+        }
+    } else {
+        Write-Log INFO "IP unchanged ($currentIp)"
+    }
+}
+
+function Install-Agent {
+    $InstallDir = "$env:ProgramFiles\Driftlock"
+    if (!(Test-Path $InstallDir)) { New-Item -Path $InstallDir -ItemType Directory -Force }
+    
+    $DestFile = "$InstallDir\driftlock-$SERVICE_NAME.ps1"
+    Copy-Item -Path $PSCommandPath -Destination $DestFile -Force
+    
+    # Task Scheduler
+    $Action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument "-NonInteractive -WindowStyle Hidden -ExecutionPolicy Bypass -File `"$DestFile`" -Check"
+    $Trigger1 = New-ScheduledTaskTrigger -AtStartup -RandomDelay (New-TimeSpan -Seconds 30)
+    $Trigger2 = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Seconds $CHECK_INTERVAL)
+    
+    $Principal = New-ScheduledTaskPrincipal -UserId "SYSTEM" -LogonType ServiceAccount -RunLevel Highest
+    $Settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable
+    
+    Register-ScheduledTask -TaskName "DriftlockAgent-$SERVICE_NAME" -Action $Action -Trigger $Trigger1, $Trigger2 -Principal $Principal -Settings $Settings -Force
+    
+    Write-Host "✓ Driftlock agent installed for $HOSTNAME_FULL" -ForegroundColor Green
+}
+
+param([switch]$Daemon, [switch]$Check)
+
+if ($Daemon) {
+    while($true) {
+        Invoke-Check
+        Start-Sleep -Seconds $CHECK_INTERVAL
+    }
+} elseif ($Check) {
+    Invoke-Check
+} else {
+    Install-Agent
+}
