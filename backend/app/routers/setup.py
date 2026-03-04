@@ -23,10 +23,11 @@ async def setup_cloudflare(request: CloudflareSetupRequest, user=Depends(get_cur
     # Clear old config
     await db.execute(delete(CloudflareConfig))
     
+    from datetime import datetime
     config = CloudflareConfig(
         api_token=encrypted_token,
         zone_cache=json.dumps([{"id": z["id"], "name": z["name"]} for z in zones]),
-        verified_at=None # Update on success
+        verified_at=datetime.utcnow()
     )
     db.add(config)
     await db.commit()

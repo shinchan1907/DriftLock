@@ -77,7 +77,7 @@ const Setup: React.FC = () => {
                                         type="password"
                                         required
                                         className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-12 pr-4 py-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all placeholder:text-slate-600"
-                                        placeholder="Paste your API token here..."
+                                        placeholder={status?.configured ? "••••••••••••••••" : "Paste your API token here..."}
                                         value={apiToken}
                                         onChange={(e) => setApiToken(e.target.value)}
                                     />
@@ -106,7 +106,7 @@ const Setup: React.FC = () => {
                                     <Loader2 className="w-6 h-6 animate-spin" />
                                 ) : (
                                     <>
-                                        Save Configuration
+                                        {status?.configured ? 'Update Configuration' : 'Save Configuration'}
                                         <CheckCircle2 className="w-5 h-5 group-hover:scale-110 transition-transform" />
                                     </>
                                 )}
