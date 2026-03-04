@@ -1,4 +1,4 @@
-<![CDATA[<div align="center">
+<div align="center">
 
 ```
      ██████╗  ██████╗  ██╗ ███████╗ ████████╗ ██╗      ██████╗   ██████╗ ██╗  ██╗
@@ -14,9 +14,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Docker Pulls](https://img.shields.io/docker/pulls/driftlock/driftlock?color=blue&logo=docker)](https://hub.docker.com/r/driftlock/driftlock)
-[![GitHub Stars](https://img.shields.io/github/stars/YOUR_USERNAME/driftlock?style=social)](https://github.com/YOUR_USERNAME/driftlock)
-[![Last Commit](https://img.shields.io/github/last-commit/YOUR_USERNAME/driftlock)](https://github.com/YOUR_USERNAME/driftlock)
-[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20Raspberry%20Pi-informational)](https://github.com/YOUR_USERNAME/driftlock)
+[![GitHub Stars](https://img.shields.io/github/stars/shinchan1907/driftlock?style=social)](https://github.com/shinchan1907/driftlock)
+[![Last Commit](https://img.shields.io/github/last-commit/shinchan1907/driftlock)](https://github.com/shinchan1907/driftlock)
+[![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20Raspberry%20Pi-informational)](https://github.com/shinchan1907/driftlock)
 [![FastAPI](https://img.shields.io/badge/built%20with-FastAPI-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
 [![React](https://img.shields.io/badge/built%20with-React%2018-61DAFB?logo=react&logoColor=white)](https://reactjs.org)
 
@@ -109,7 +109,7 @@
 ### One-Command Deploy
 
 ```bash
-curl -sSL https://raw.githubusercontent.com/YOUR_USERNAME/driftlock/main/setup.sh | bash
+curl -sSL https://raw.githubusercontent.com/shinchan1907/driftlock/main/setup.sh | bash
 ```
 
 **That's it.** The script installs Docker, generates secure keys, obtains your SSL certificate via Let's Encrypt, and starts all services. Your dashboard will be live at `https://yourdomain.com` within 2 minutes.
@@ -119,7 +119,7 @@ curl -sSL https://raw.githubusercontent.com/YOUR_USERNAME/driftlock/main/setup.s
 ### Manual Deploy (if you don't trust pipe-to-bash — fair enough)
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/driftlock.git
+git clone https://github.com/shinchan1907/driftlock.git
 cd driftlock
 cp .env.example .env
 nano .env                    # Set your domain, admin credentials, secret key
@@ -129,7 +129,7 @@ bash setup.sh
 ### Local Development (no domain required)
 
 ```bash
-git clone https://github.com/YOUR_USERNAME/driftlock.git
+git clone https://github.com/shinchan1907/driftlock.git
 cd driftlock
 cp .env.example .env         # defaults are ready for local dev
 docker compose up --build    # override.yml auto-enables HTTP-only mode
@@ -337,7 +337,7 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 - [ ] **Webhook support** — trigger custom actions on IP change events
 - [ ] **Agent auto-update** — agents check for new versions and update themselves
 
-Have a feature idea? [Open a discussion](https://github.com/YOUR_USERNAME/driftlock/discussions) — we'd love to hear it.
+Have a feature idea? [Open a discussion](https://github.com/shinchan1907/driftlock/discussions) — we'd love to hear it.
 
 ---
 
@@ -349,7 +349,7 @@ All contributions are welcome — from typo fixes to major feature PRs. This pro
 
 ```bash
 # Clone and start the full stack locally
-git clone https://github.com/YOUR_USERNAME/driftlock.git
+git clone https://github.com/shinchan1907/driftlock.git
 cd driftlock
 cp .env.example .env
 
@@ -366,9 +366,9 @@ npm run dev
 
 ### Where to Start
 
-- 🏷️ Check out issues tagged [**good first issue**](https://github.com/YOUR_USERNAME/driftlock/labels/good%20first%20issue) — these are specifically scoped for new contributors
+- 🏷️ Check out issues tagged [**good first issue**](https://github.com/shinchan1907/driftlock/labels/good%20first%20issue) — these are specifically scoped for new contributors
 - 📖 Read the [CONTRIBUTING.md](CONTRIBUTING.md) for code style and PR guidelines
-- 💬 Join the [Discussions](https://github.com/YOUR_USERNAME/driftlock/discussions) to ask questions before diving in
+- 💬 Join the [Discussions](https://github.com/shinchan1907/driftlock/discussions) to ask questions before diving in
 
 ### Project Structure
 
@@ -405,9 +405,9 @@ driftlock/
 
 ## 💬 Community & Support
 
-- 🐛 **Found a bug?** [Open an issue](https://github.com/YOUR_USERNAME/driftlock/issues)
-- 💡 **Have an idea?** [Start a discussion](https://github.com/YOUR_USERNAME/driftlock/discussions)
-- 📣 **Want to share your setup?** Post in [Show & Tell](https://github.com/YOUR_USERNAME/driftlock/discussions/categories/show-and-tell)
+- 🐛 **Found a bug?** [Open an issue](https://github.com/shinchan1907/driftlock/issues)
+- 💡 **Have an idea?** [Start a discussion](https://github.com/shinchan1907/driftlock/discussions)
+- 📣 **Want to share your setup?** Post in [Show & Tell](https://github.com/shinchan1907/driftlock/discussions/categories/show-and-tell)
 
 > **If Driftlock saved you money or headaches, consider giving it a ⭐** — it costs you nothing and helps more self-hosters discover the project. Every star genuinely makes a difference for open source visibility.
 
@@ -415,8 +415,8 @@ driftlock/
 
 ## 📈 Star History
 
-<!-- Replace YOUR_USERNAME with your actual GitHub username -->
-[![Star History Chart](https://api.star-history.com/svg?repos=YOUR_USERNAME/driftlock&type=Date)](https://star-history.com/#YOUR_USERNAME/driftlock&Date)
+
+[![Star History Chart](https://api.star-history.com/svg?repos=shinchan1907/driftlock&type=Date)](https://star-history.com/#shinchan1907/driftlock&Date)
 
 ---
 
@@ -441,7 +441,7 @@ Inspired by the collective frustration of everyone who has ever tried to configu
 
 **Made with ☕ and the belief that self-hosting should be beautiful.**
 
-If you've been running ddclient scripts for years and want something better — give Driftlock a try and [let us know what you think](https://github.com/YOUR_USERNAME/driftlock/discussions).
+If you've been running ddclient scripts for years and want something better — give Driftlock a try and [let us know what you think](https://github.com/shinchan1907/driftlock/discussions).
 
 ---
 
@@ -450,4 +450,3 @@ MIT License — Copyright © 2025 Driftlock Contributors
 Free for personal and commercial use. See [LICENSE](LICENSE) for details.
 
 </div>
-]]>
