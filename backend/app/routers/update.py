@@ -98,7 +98,7 @@ async def update_ip(
         await db.commit()
         
         return {
-            "status": "updated",
+            "status": "success",
             "current_ip": client_ip,
             "hostname": hostname,
             "message": "DNS record updated successfully"

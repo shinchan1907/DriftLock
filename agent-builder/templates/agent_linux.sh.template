@@ -66,6 +66,9 @@ run_check() {
             return
         fi
     fi
+
+    # Detect the current public IP (was missing — agent never ran!)
+    current_ip=$(detect_ip)
     
     if [[ -z "$current_ip" ]]; then
         echo "$(date '+%Y-%m-%d %H:%M:%S') [ERROR] Could not detect public IP" >> "$log_file"

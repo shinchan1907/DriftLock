@@ -15,7 +15,7 @@ if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     $arguments = '-NoProfile -ExecutionPolicy Bypass -File "' + $PSCommandPath + '"'
     if ($Daemon) { $arguments += " -Daemon" }
     if ($Check) { $arguments += " -Check" }
-    Start-Process PowerShell -ArgumentList $arguments -Verb RunAs
+    Start-Process PowerShell -ArgumentList $arguments -Verb RunAs -Wait
     exit
 }
 
@@ -62,9 +62,10 @@ function Send-Update {
     
     try {
         $response = Invoke-RestMethod -Uri "$DRIFTLOCK_SERVER/api/update" -Method Post -Headers $headers -Body $body
-        return ($response.status -eq "success" -or $response.status -eq "no_change")
+        # Accept "success" (current backend) or "updated" (older backend) or "no_change"
+        return ($response.status -eq "success" -or $response.status -eq "updated" -or $response.status -eq "no_change")
     } catch {
-        Write-Log ERROR "Update API call failed: $_"
+        Write-Log ERROR "Update API call failed: $($_.Exception.Message) | Response: $($_.ErrorDetails.Message)"
         return $false
     }
 }
