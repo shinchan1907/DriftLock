@@ -26,9 +26,37 @@ const Download: React.FC = () => {
         fetchServices();
     }, []);
 
-    const handleDownload = () => {
+    const handleDownload = async () => {
         if (!selectedService) return;
-        window.location.href = `/api/agents/download?service_id=${selectedService}&platform=${platform}`;
+        try {
+            const response = await client.get(`/api/agents/download?service_id=${selectedService}&platform=${platform}`, {
+                responseType: 'blob'
+            });
+
+            // Create blob link to download
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const link = document.createElement('a');
+            link.href = url;
+
+            // Get filename from header if possible
+            const contentDisposition = response.headers['content-disposition'];
+            let filename = `driftlock-agent-${platform}`;
+            if (contentDisposition) {
+                const filenameMatch = contentDisposition.match(/filename="(.+)"/);
+                if (filenameMatch?.[1]) filename = filenameMatch[1];
+            } else {
+                filename += platform === 'windows-ps1' ? '.ps1' : '.sh';
+            }
+
+            link.setAttribute('download', filename);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            window.URL.revokeObjectURL(url);
+        } catch (err) {
+            console.error('Download failed', err);
+            alert('Failed to download agent. Please ensure you are logged in.');
+        }
     };
 
     const platforms = [

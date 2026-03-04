@@ -28,6 +28,7 @@ services:
     volumes:
       - sqlite_data:/app/data
       - agent_builds:/app/agent_builds:ro
+      - ./agent-builder/templates:/app/agent-builder/templates:ro
     env_file: .env
     environment:
       - AGENT_BUILD_DIR=/app/agent_builds

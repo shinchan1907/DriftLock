@@ -41,6 +41,7 @@ async def download_agent(
             service_name=service.name,
             check_interval=service.check_interval,
             agent_version=settings.AGENT_VERSION,
+            service_port=service.port,
         )
     except FileNotFoundError as e:
         raise HTTPException(404, str(e))

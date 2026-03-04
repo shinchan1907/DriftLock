@@ -34,6 +34,7 @@ def generate_linux_agent(
     service_name: str,
     check_interval: int,
     agent_version: str,
+    service_port: int = None,
     platform: str = "linux"
 ) -> tuple[bytes, str]:
     """Returns (file_bytes, suggested_filename)"""
@@ -48,6 +49,7 @@ def generate_linux_agent(
         "CHECK_INTERVAL": str(check_interval),
         "AGENT_VERSION": agent_version,
         "PLATFORM": platform,
+        "PORT": str(service_port) if service_port else "",
     })
     filename = f"driftlock-agent-{safe_name}.sh"
     return script.encode("utf-8"), filename
@@ -59,6 +61,7 @@ def generate_powershell_agent(
     service_name: str,
     check_interval: int,
     agent_version: str,
+    service_port: int = None,
 ) -> tuple[bytes, str]:
     """Returns (file_bytes, suggested_filename)"""
     template = _load_template("agent_windows.ps1.template")
@@ -70,6 +73,7 @@ def generate_powershell_agent(
         "SERVICE_NAME": safe_name,
         "CHECK_INTERVAL": str(check_interval),
         "AGENT_VERSION": agent_version,
+        "PORT": str(service_port) if service_port else "",
     })
     filename = f"driftlock-agent-{safe_name}.ps1"
     return script.encode("utf-8"), filename
@@ -136,6 +140,7 @@ def generate_agent(
     service_name: str,
     check_interval: int = 300,
     agent_version: str = "1.0.0",
+    service_port: int = None,
 ) -> tuple[bytes, str, str]:
     """
     Main entry point called by the API router.
@@ -144,14 +149,14 @@ def generate_agent(
     if platform in ("linux", "raspberry-pi"):
         data, filename = generate_linux_agent(
             server_url, api_key, hostname, service_name, 
-            check_interval, agent_version, platform
+            check_interval, agent_version, service_port, platform
         )
         return data, filename, "text/x-shellscript"
     
     elif platform == "windows-ps1":
         data, filename = generate_powershell_agent(
             server_url, api_key, hostname, service_name,
-            check_interval, agent_version
+            check_interval, agent_version, service_port
         )
         return data, filename, "text/plain"
     

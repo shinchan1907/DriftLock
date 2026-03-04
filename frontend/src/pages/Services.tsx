@@ -149,9 +149,14 @@ const Services: React.FC = () => {
                             className="w-full bg-slate-950 border border-slate-800 rounded-2xl pl-12 pr-4 py-3 text-sm text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
                         />
                     </div>
-                    <button className="p-3 text-slate-400 hover:text-white transition-colors">
-                        <RefreshCw className="w-5 h-5" />
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <button
+                            onClick={() => fetchServices()}
+                            className="p-3 text-slate-400 hover:text-white transition-colors bg-slate-800/50 rounded-xl border border-slate-700/50"
+                        >
+                            <RefreshCw className={`w-5 h-5 ${loading ? 'animate-spin' : ''}`} />
+                        </button>
+                    </div>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -202,7 +207,6 @@ const Services: React.FC = () => {
                                                     <p className="text-white font-bold">{service.name}</p>
                                                     <p className="text-slate-500 text-xs font-mono">
                                                         {service.subdomain}.{service.zone_name}
-                                                        {service.port && <span className="text-blue-400 ml-1">:{service.port}</span>}
                                                     </p>
                                                 </div>
                                             </div>
@@ -232,14 +236,25 @@ const Services: React.FC = () => {
                                                     Online
                                                 </div>
                                             ) : (
-                                                <div className="flex items-center gap-2 text-slate-500 text-xs font-bold bg-slate-800/50 border border-slate-800 px-3 py-1.5 rounded-full w-fit">
-                                                    <span className="w-2 h-2 rounded-full bg-slate-600" />
-                                                    Offline
+                                                <div className="flex flex-col gap-1">
+                                                    <div className="flex items-center gap-2 text-slate-500 text-xs font-bold bg-slate-800/50 border border-slate-800 px-3 py-1.5 rounded-full w-fit">
+                                                        <span className="w-2 h-2 rounded-full bg-slate-600" />
+                                                        Offline
+                                                    </div>
+                                                    <p className="text-[10px] text-slate-600 italic px-1">Waiting for agent heartbeat...</p>
                                                 </div>
                                             )}
                                         </td>
                                         <td className="px-6 py-5 text-right">
                                             <div className="flex items-center justify-end gap-2">
+                                                {!service.current_ip && (
+                                                    <a
+                                                        href="/download"
+                                                        className="px-3 py-1.5 bg-blue-600/10 text-blue-400 hover:bg-blue-600 hover:text-white rounded-lg text-xs font-bold transition-all border border-blue-600/20"
+                                                    >
+                                                        Get Agent
+                                                    </a>
+                                                )}
                                                 <button className="p-2 text-slate-500 hover:text-white hover:bg-slate-800 rounded-xl transition-all">
                                                     <ExternalLink className="w-5 h-5" />
                                                 </button>
@@ -271,7 +286,7 @@ const Services: React.FC = () => {
 
                         <form onSubmit={handleAddService} className="p-8 space-y-6">
                             <div className="grid grid-cols-2 gap-6">
-                                <div className="col-span-2">
+                                <div className="col-span-2 md:col-span-1">
                                     <label className="block text-sm font-semibold text-slate-300 mb-2">Service Name</label>
                                     <input
                                         type="text"
@@ -282,7 +297,7 @@ const Services: React.FC = () => {
                                         onChange={(e) => setNewService({ ...newService, name: e.target.value })}
                                     />
                                 </div>
-                                <div>
+                                <div className="col-span-2 md:col-span-1">
                                     <label className="block text-sm font-semibold text-slate-300 mb-2">Subdomain</label>
                                     <input
                                         type="text"
@@ -293,8 +308,8 @@ const Services: React.FC = () => {
                                         onChange={(e) => setNewService({ ...newService, subdomain: e.target.value })}
                                     />
                                 </div>
-                                <div>
-                                    <label className="block text-sm font-semibold text-slate-300 mb-2">Zone</label>
+                                <div className="col-span-2 md:col-span-1">
+                                    <label className="block text-sm font-semibold text-slate-300 mb-2">Target Zone</label>
                                     <select
                                         className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all appearance-none"
                                         value={newService.zone_id}
@@ -307,26 +322,48 @@ const Services: React.FC = () => {
                                         {zones.map(z => <option key={z.id} value={z.id}>{z.name}</option>)}
                                     </select>
                                 </div>
-                                <div className="col-span-2">
-                                    <label className="block text-sm font-semibold text-slate-300 mb-2">Service Port (Optional)</label>
+                                <div className="col-span-2 md:col-span-1">
+                                    <label className="block text-sm font-semibold text-slate-300 mb-2">Check Port (Internal)</label>
                                     <input
                                         type="number"
                                         className="w-full bg-slate-950 border border-slate-800 rounded-2xl px-4 py-4 text-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                                        placeholder="e.g. 80, 443, 8080"
+                                        placeholder="e.g. 8080"
                                         value={newService.port}
-                                        onChange={(e) => setNewService({ ...newService, port: e.target.value })}
+                                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setNewService({ ...newService, port: e.target.value })}
                                     />
                                 </div>
-                            </div>
 
-                            <div className="p-6 bg-slate-950 border border-slate-800 rounded-2xl">
-                                <p className="text-slate-500 text-xs font-bold uppercase mb-4 tracking-widest">Preview Hostname</p>
-                                <div className="flex items-center gap-3">
-                                    <Globe className="w-5 h-5 text-blue-500" />
-                                    <span className="text-lg font-bold text-white tracking-tight">
-                                        {newService.subdomain || '---'}.{newService.zone_name || 'yourdomain.com'}
-                                        {newService.port && <span className="text-blue-400">:{newService.port}</span>}
-                                    </span>
+                                <div className="col-span-2">
+                                    <label className="block text-sm font-semibold text-slate-300 mb-2">Cloudflare Proxy Status</label>
+                                    <div className="flex p-1 bg-slate-950 border border-slate-800 rounded-2xl">
+                                        <button
+                                            type="button"
+                                            onClick={() => setNewService({ ...newService, proxied: false })}
+                                            className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-bold transition-all ${!newService.proxied ? 'bg-slate-800 text-slate-300 shadow-lg' : 'text-slate-500 hover:text-slate-400'}`}
+                                        >
+                                            <div className="w-3 h-3 rounded-full bg-slate-500" />
+                                            Grey Cloud (DNS Only)
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setNewService({ ...newService, proxied: true })}
+                                            className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-xl text-sm font-bold transition-all ${newService.proxied ? 'bg-orange-500/20 text-orange-500 border border-orange-500/30' : 'text-slate-500 hover:text-slate-400'}`}
+                                        >
+                                            <Zap className="w-4 h-4 fill-orange-500" />
+                                            Orange Cloud (Proxied)
+                                        </button>
+                                    </div>
+                                    <p className="mt-2 text-[10px] text-slate-500 uppercase tracking-widest text-center">Orange cloud enables Cloudflare security & performance tools</p>
+                                </div>
+
+                                <div className="col-span-2 p-6 bg-slate-950 border border-slate-800 rounded-2xl">
+                                    <p className="text-slate-500 text-xs font-bold uppercase mb-4 tracking-widest">Public Hostname Preview</p>
+                                    <div className="flex items-center gap-3">
+                                        <Globe className="w-5 h-5 text-blue-500" />
+                                        <span className="text-lg font-bold text-white tracking-tight">
+                                            {newService.subdomain || '---'}.{newService.zone_name || 'yourdomain.com'}
+                                        </span>
+                                    </div>
                                 </div>
                             </div>
 
