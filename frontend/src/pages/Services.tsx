@@ -11,7 +11,8 @@ import {
     ExternalLink,
     ChevronRight,
     Loader2,
-    AlertCircle
+    AlertCircle,
+    Server
 } from 'lucide-react';
 import client from '../api/client';
 

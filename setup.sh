@@ -78,6 +78,26 @@ if [[ "$ID" != "ubuntu" && "$ID" != "debian" ]]; then
     warn "Proceeding anyway — Docker install commands may differ."
 fi
 
+# ── Pre-flight Checks (Production Grade) ──────────────────
+step "Pre-flight Checks"
+
+# Check RAM (Min 512MB)
+TOTAL_RAM=$(free -m | awk '/^Mem:/{print $2}')
+if [ "$TOTAL_RAM" -lt 450 ]; then
+    warn "Low RAM detected (${TOTAL_RAM}MB). Driftlock recommends at least 512MB."
+else
+    success "RAM: ${TOTAL_RAM}MB OK"
+fi
+
+# Check Disk Space (Min 2GB)
+FREE_DISK=$(df -h . | awk '/\// {print $4}' | sed 's/G//')
+# Simple check for G (GB) or M (MB)
+if [[ $(df -m . | awk '/\// {print $4}') -lt 2000 ]]; then
+    warn "Low disk space detected. Driftlock recommends at least 2GB free."
+else
+    success "Disk: OK"
+fi
+
 # ═══════════════════════════════════════════════════════════
 #  STEP 1: Install Docker
 # ═══════════════════════════════════════════════════════════
@@ -281,11 +301,21 @@ fi
 # ═══════════════════════════════════════════════════════════
 #  STEP 4: Build Frontend
 # ═══════════════════════════════════════════════════════════
-step "Step 4/7: Build Frontend"
-
-info "Building React frontend (this may take 1-2 minutes on first run)..."
-$DOCKER compose run --rm frontend
 success "Frontend built and output copied to volume"
+
+# ═══════════════════════════════════════════════════════════
+#  STEP 4.5: Build Agents
+# ═══════════════════════════════════════════════════════════
+step "Step 4.5/7: Build Agents"
+
+info "Building agent binaries..."
+# Create the dist directory if it doesn't exist
+mkdir -p agent-builder/dist
+# Build the agent builder image
+$DOCKER build -t driftlock-agent-builder -f agent-builder/Dockerfile .
+# Run it to generate the binaries into the volume-mapped directory
+$DOCKER run --rm -v "$(pwd)/agent-builder/dist:/output" driftlock-agent-builder
+success "Agents built"
 
 # ═══════════════════════════════════════════════════════════
 #  STEP 5: Start Services (HTTP-only for cert issuance)
@@ -408,6 +438,23 @@ if $DOCKER compose run --rm certbot certificates 2>/dev/null | grep -q "$DOMAIN"
 else
     DASHBOARD_URL="http://${DOMAIN}"
 fi
+
+# ── Backup Script (Production Grade) ─────────────────────
+cat > backup.sh <<'BACKUPEOF'
+#!/bin/bash
+BACKUP_DIR="./backups"
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+mkdir -p $BACKUP_DIR
+# Backup SQLite DB
+docker compose exec -T backend sqlite3 /app/data/driftlock.db ".backup '$BACKUP_DIR/driftlock_$TIMESTAMP.sqlite'"
+# Keep only last 7 days
+find $BACKUP_DIR -type f -name "*.sqlite" -mtime +7 -delete
+echo "✓ Backup completed: $BACKUP_DIR/driftlock_$TIMESTAMP.sqlite"
+BACKUPEOF
+
+chmod +x backup.sh
+(crontab -l 2>/dev/null; echo "0 4 * * * cd $(pwd) && ./backup.sh > /dev/null 2>&1") | crontab -
+success "Database backup script and cron job (4am daily) installed"
 
 # Final health check
 echo ""
