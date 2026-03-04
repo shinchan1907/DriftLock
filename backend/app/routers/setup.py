@@ -45,5 +45,6 @@ async def get_status(db: AsyncSession = Depends(get_db)):
     return {
         "configured": True,
         "zones_count": zones_count,
-        "verified_at": config.verified_at
+        "verified_at": config.verified_at,
+        "zones": json.loads(config.zone_cache) if config.zone_cache else []
     }

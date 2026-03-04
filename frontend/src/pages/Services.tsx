@@ -45,12 +45,8 @@ const Services: React.FC = () => {
     const fetchZones = async () => {
         try {
             const { data } = await client.get('/api/setup/status');
-            // In a real app, we'd fetch the actual zone list.
-            // For this demo, we assume the status includes the count or we fetch from setup.
-            const statusRes = await client.get('/api/setup/status');
-            if (statusRes.data.configured) {
-                // Mocking zones if not directly available for this simplified version
-                setZones([{ id: 'mock-zone-id', name: 'example.com' }]);
+            if (data.configured && data.zones) {
+                setZones(data.zones);
             }
         } catch (err) {
             console.error('Failed to fetch zones', err);

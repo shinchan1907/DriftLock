@@ -29,6 +29,7 @@ class CloudflareStatusResponse(BaseModel):
     configured: bool
     zones_count: int
     verified_at: Optional[datetime]
+    zones: Optional[List[dict]] = []
 
 # Service
 class ServiceBase(BaseModel):
