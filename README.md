@@ -115,27 +115,34 @@
 - [ ] An [AWS Lightsail](https://lightsail.aws.amazon.com) instance (Ubuntu 22.04, **$3.50/mo**) or any Linux VPS
 - [ ] Your domain's A record pointed at your server's public IP
 
-### One-Command Deploy
-
+### Option A — Single Docker command (easiest)
 ```bash
-curl -sSL https://raw.githubusercontent.com/shinchan1907/driftlock/main/setup.sh | bash
+docker run -d \
+  --name driftlock \
+  --restart unless-stopped \
+  -p 80:80 \
+  -e ADMIN_PASSWORD=yourpassword \
+  -v driftlock_data:/app/data \
+  shinchangupta/driftlock:latest
 ```
+Open http://localhost — done.
 
-**That's it.** The script installs Docker, generates secure keys, obtains your SSL certificate via Let's Encrypt, and starts all services. Your dashboard will be live at `https://yourdomain.com` within 2 minutes.
-
-> 💡 The setup script is interactive — it will ask for your domain, admin username, password, and Let's Encrypt email. No config files to edit.
-
-### Manual Deploy (if you don't trust pipe-to-bash — fair enough)
-
+### Option B — Docker Compose (recommended for production)
 ```bash
-git clone https://github.com/shinchan1907/driftlock.git
-cd driftlock
+curl -O https://raw.githubusercontent.com/shinchan1907/DriftLock/main/docker-compose.hub.yml
+curl -O https://raw.githubusercontent.com/shinchan1907/DriftLock/main/.env.example
 cp .env.example .env
-nano .env                    # Set your domain, admin credentials, secret key
-bash setup.sh
+# Edit .env to set your password and domain
+docker compose -f docker-compose.hub.yml up -d
 ```
 
-### Local Development (no domain required)
+### Option C — Build from source (for developers)
+```bash
+git clone https://github.com/shinchan1907/DriftLock.git
+cd DriftLock
+cp .env.example .env
+docker compose up --build
+```
 
 ```bash
 git clone https://github.com/shinchan1907/driftlock.git
