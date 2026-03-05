@@ -34,9 +34,20 @@
 
 ## ✨ See It In Action
 
-<!-- Add screenshot: ![Driftlock Dashboard](docs/screenshot-dashboard.png) -->
+<div align="center">
+  <img src="docs/screenshot-analytics.png" alt="Driftlock Analytics" width="800">
+  <p><i>Real-time insights and network health via the Analytics Overview</i></p>
+  
+  <br>
+  
+  <img src="docs/screenshot-services.png" alt="Driftlock Services" width="800">
+  <p><i>Manage secure Tunnels and traditional DDNS in one place</i></p>
 
-> **🖼️ Screenshot coming soon** — The dashboard features a dark-themed analytics view with real-time activity charts, a services management table showing live IP status for every device, filterable audit logs, and a one-click agent download center. Every screen was designed to feel like a premium SaaS product — except you own the whole thing.
+  <br>
+  
+  <img src="docs/screenshot-download.png" alt="Driftlock Agent Download" width="800">
+  <p><i>One-click pre-configured agent installers for all platforms</i></p>
+</div>
 
 📹 **Full demo video:** [Watch on YouTube](#)
 

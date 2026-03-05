@@ -6,13 +6,14 @@ import json
 class Settings(BaseSettings):
     # Core
     ENVIRONMENT: str = "development"
-    SECRET_KEY: str
+    # Secret keys - providing defaults to prevent crash loops, 
+    # but production use should ALWAYS set these via env vars.
+    SECRET_KEY: str = "insecure-default-key-please-change-in-production"
     DOMAIN: str = "localhost"
     SERVER_URL: str = "http://localhost"
-
-    # Admin Account
     ADMIN_USERNAME: str = "admin"
-    ADMIN_PASSWORD: str
+    ADMIN_PASSWORD: str = "admin123"
+    ENCRYPTION_SALT: str = "default-salt-change-me"
 
     # JWT
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 15
@@ -21,12 +22,7 @@ class Settings(BaseSettings):
     # Database
     DATABASE_URL: str = "sqlite+aiosqlite:////app/data/driftlock.db"
 
-    # Encryption
-    ENCRYPTION_SALT: str
-
-    # CORS — stored as a plain string so pydantic-settings doesn't
-    # attempt JSON parsing on the env var.  Use .cors_origins_list
-    # everywhere you need the actual list.
+    # CORS
     CORS_ORIGINS: str = "http://localhost,http://localhost:3000,http://localhost:5173"
 
     @property
@@ -35,12 +31,15 @@ class Settings(BaseSettings):
         v = self.CORS_ORIGINS.strip()
         if not v:
             return ["http://localhost"]
-        if v.startswith("["):
-            try:
-                return json.loads(v)
-            except json.JSONDecodeError:
-                pass
-        return [o.strip() for o in v.split(",") if o.strip()]
+        
+        # Split by comma and clean
+        origins = [o.strip() for o in v.split(",") if o.strip()]
+        
+        # Auto-add the main SERVER_URL if it's not already there
+        if self.SERVER_URL and self.SERVER_URL not in origins:
+            origins.append(self.SERVER_URL)
+            
+        return list(set(origins))
 
     # Rate Limiting
     UPDATE_RATE_LIMIT: str = "60/minute"
