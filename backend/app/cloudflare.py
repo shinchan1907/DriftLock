@@ -150,3 +150,20 @@ class CloudflareClient:
         }
         result = await self._request("POST", f"/zones/{zone_id}/dns_records", json=body)
         return result.get("result", {})
+
+    async def get_tunnel_status(self, account_id: str, tunnel_id: str) -> str:
+        """
+        Check if the tunnel is currently connected and healthy.
+        Returns 'healthy', 'inactive', or 'down'.
+        """
+        try:
+            result = await self._request("GET", f"/accounts/{account_id}/cfd_tunnel/{tunnel_id}")
+            return result.get("result", {}).get("status", "inactive")
+        except:
+            return "down"
+
+    async def get_traffic_analytics(self, zone_id: str, minutes: int = 1440) -> List[Dict]:
+        """Fetch traffic analytics using Cloudflare GraphQL API."""
+        # This is a placeholder for the GraphQL implementation
+        # Real-time traffic would require formatted timestamps
+        return []

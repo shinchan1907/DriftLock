@@ -16,6 +16,20 @@ async def lifespan(app: FastAPI):
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
 
+    # Auto-Migration: Ensure new columns exist for existing installations
+    async with engine.connect() as conn:
+        def run_migrations(connection):
+            cursor = connection.connection.cursor()
+            # Add CloudflareConfig.account_id
+            try: cursor.execute("ALTER TABLE cloudflare_config ADD COLUMN account_id TEXT")
+            except: pass
+            # Add Service tunnel columns
+            cols = ["tunnel_mode BOOLEAN DEFAULT 0", "tunnel_id TEXT", "tunnel_token TEXT", "tunnel_account_id TEXT", "local_service_url TEXT"]
+            for col in cols:
+                try: cursor.execute(f"ALTER TABLE services ADD COLUMN {col}")
+                except: pass
+        await conn.run_sync(run_migrations)
+
     async with SessionLocal() as db:
         from sqlalchemy import select
         result = await db.execute(select(User).where(User.username == settings.ADMIN_USERNAME))

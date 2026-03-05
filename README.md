@@ -44,23 +44,21 @@
 
 ## 🤔 Why Driftlock?
 
-| Feature | **Driftlock** | DuckDNS | No-IP | ddclient |
+| Feature | **Driftlock** | DuckDNS | No-IP | Cloudflare Tunnel |
 |:--------|:---:|:---:|:---:|:---:|
-| Use **your own domain** | ✅ | ❌ | ⚠️ Paid plans only | ✅ |
-| Beautiful GUI dashboard | ✅ | ❌ | ⚠️ Basic web UI | ❌ |
-| Multi-device support | ✅ | ✅ | ⚠️ Limited on free | ✅ |
-| Agent auto-installer (Win + Linux) | ✅ | ❌ | ⚠️ Windows only | ❌ |
-| System tray icon (Windows) | ✅ | ❌ | ✅ | ❌ |
+| Use **your own domain** | ✅ | ❌ | ⚠️ Paid only | ✅ |
+| Beautiful GUI dashboard | ✅ | ❌ | ⚠️ Basic | ❌ |
+| Multi-device support | ✅ | ✅ | ⚠️ Limited | ✅ |
+| Agent auto-installer (Win + Linux) | ✅ | ❌ | ⚠️ Windows | ❌ |
+| **No Port Forwarding needed** | ✅ | ❌ | ❌ | ✅ |
 | Analytics & uptime tracking | ✅ | ❌ | ❌ | ❌ |
 | Filterable audit logs | ✅ | ❌ | ❌ | ❌ |
 | Docker one-command deploy | ✅ | N/A | N/A | ❌ |
 | Auto SSL (Let's Encrypt) | ✅ | N/A | N/A | N/A |
-| API token encrypted at rest | ✅ | ❌ | ❌ | ❌ |
 | Open source | ✅ | ✅ | ❌ | ✅ |
-| Free to self-host | ✅ | ✅ | ⚠️ 3 hosts free | ✅ |
 | **Monthly cost** | **$3.50** (VPS) | Free | $0–25 | Free |
 
-**Bottom line:** DuckDNS gives you an ugly subdomain. No-IP nags you monthly to "confirm" your hostname. ddclient works but gives you zero visibility into what's happening. Driftlock gives you all of them — with a dashboard you actually *want* to open.
+**Bottom line:** Driftlock is now a complete **Edge Orchestration Suite**. Whether you need classic Dynamic DNS for direct IP access or **Cloudflare Tunnels** to expose web services without opening firewall ports, Driftlock handles it all through a single, stunning dashboard.
 
 ---
 
@@ -69,10 +67,10 @@
 ### 🖥️ Dashboard & Management
 
 - **Beautiful dark-themed React UI** — designed to feel premium, not like a weekend project
-- **Service management** with live IP status, health indicators, and one-click API key rotation
+- **Cloudflare Tunnel Integration** — expose local services (e.g. `http://localhost:3000`) securely without port forwarding
+- **Service management** with live status, tunnel health, and one-click API key rotation
 - **Filterable audit logs** — search by service, status, IP, or date range
-- **Analytics dashboard** — activity charts, reliability donut, hourly traffic heatmap, and system health monitor
-- **Responsive design** — works on desktop, tablet, and mobile
+- **Advanced Analytics** — Network distribution pie charts, 24h hourly traffic trends, and system health monitor
 
 ### 🤖 Smart Agents
 
@@ -149,23 +147,29 @@ Open [http://localhost](http://localhost) — login with `admin` / `admin123`.
 
 3. **Add a Service** — Go to **Services** → **Add Service** → pick a subdomain (e.g. `homepc`) and zone (e.g. `example.com`). This creates `homepc.example.com` pointing at your device's IP.
 
-4. **Download the Agent** — Go to **Download Agent** → select the service → pick your platform → click **Download**. The installer comes pre-configured with your server URL and API key baked in.
+4. **Download the Agent** — Go to **Download Agent** → select the service → pick your platform → click **Download**. The installer comes pre-configured with your server URL and API/Tunnel keys baked in.
 
 5. **Run the installer on your device:**
 
-   **Windows:**
+   **Windows (PowerShell):**
    ```powershell
-   # Right-click → Run as Administrator
-   .\driftlock-agent-homepc.ps1
+   # 1. Open PowerShell as Administrator
+   # 2. Run the downloaded script
+   Set-ExecutionPolicy Bypass -Scope Process -Force; .\driftlock-agent-homepc.ps1
    ```
+   *Note: For Tunnels, this automatically installs `cloudflared` as a Windows Service.*
 
-   **Linux / Raspberry Pi:**
+   **Linux / Raspberry Pi (Bash):**
    ```bash
+   # 1. Make the script executable
    chmod +x driftlock-agent-homeserver.sh
+   # 2. Run with sudo to install systemd service
    sudo ./driftlock-agent-homeserver.sh
    ```
 
-6. **Done.** Your DNS record will update within seconds of your IP changing. Check the **Logs** page in the dashboard to see updates in real time.
+6. **Done.** Your service is now live! 
+   - **DDNS Mode**: DNS record updates within seconds of IP changes.
+   - **Tunnel Mode**: Your local service is now public at `https://subdomain.yourdomain.com` without any port forwarding.
 
 ---
 
@@ -312,17 +316,13 @@ docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 ### ✅ Already Built
 
-- [x] Cloudflare DNS integration with zone auto-discovery
-- [x] Windows PowerShell agent with scheduled task registration
-- [x] Windows EXE agent (pre-compiled, byte-patched at download)
-- [x] Linux / Raspberry Pi agent with systemd service + timer
-- [x] Analytics dashboard with activity charts, reliability stats, and system health
-- [x] JWT authentication with automatic token refresh
-- [x] AES-256-GCM encryption of Cloudflare tokens at rest
-- [x] Per-service UUIDv4 API keys with one-click rotation
-- [x] Docker one-command deploy with auto-SSL via Certbot
-- [x] Filterable, paginated audit logs
-- [x] Rate limiting on all endpoints
+- [x] Cloudflare Tunnel integration (Zero-config web access)
+- [x] Advanced Analytics (Hourly traffic + Network distribution)
+- [x] Windows PowerShell agent with auto-elevation
+- [x] Windows EXE agent (pre-compiled binary)
+- [x] Linux / Raspberry Pi agent with systemd integration
+- [x] JWT authentication + AES-256-GCM encryption at rest
+- [x] Docker one-command deploy with auto-SSL
 
 ### 🔜 Coming Soon
 

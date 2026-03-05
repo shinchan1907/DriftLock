@@ -70,3 +70,34 @@ async def get_timeseries(range: str = "7d", db: AsyncSession = Depends(get_db), 
             data_map[log_date]["no_change"] = count
             
     return {"days": sorted(data_map.values(), key=lambda x: x["date"])}
+
+@router.get("/services")
+async def get_services_analytics(db: AsyncSession = Depends(get_db), user=Depends(get_current_user)):
+    """Return top 5 services by update volume."""
+    query = text("""
+        SELECT s.name, count(u.id) as volume, s.tunnel_mode
+        FROM services s
+        LEFT JOIN update_log u ON s.id = u.service_id
+        GROUP BY s.id
+        ORDER BY volume DESC
+        LIMIT 5
+    """)
+    result = await db.execute(query)
+    return [
+        {"name": row[0], "value": row[1], "is_tunnel": bool(row[2])}
+        for row in result
+    ]
+
+@router.get("/hourly")
+async def get_hourly_traffic(db: AsyncSession = Depends(get_db), user=Depends(get_current_user)):
+    """Return hourly update volume for the last 24 hours."""
+    start_time = datetime.utcnow() - timedelta(hours=24)
+    query = text("""
+        SELECT strftime('%H', created_at) as hour, count(*) as count
+        FROM update_log
+        WHERE created_at >= :start_time
+        GROUP BY hour
+        ORDER BY hour ASC
+    """)
+    result = await db.execute(query, {"start_time": start_time})
+    return [{"hour": row[0], "count": row[1]} for row in result]

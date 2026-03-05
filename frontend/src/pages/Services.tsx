@@ -311,7 +311,7 @@ const Services: React.FC = () => {
                                                         {togglingTunnel === service.id && <Loader2 className="w-3 h-3 animate-spin text-blue-500" />}
                                                     </div>
 
-                                                    {service.current_ip ? (
+                                                    {(service.current_ip || (service.tunnel_mode && service.tunnel_id)) ? (
                                                         <div className="flex items-center gap-2 text-emerald-400 text-xs font-bold bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-full w-fit">
                                                             <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
                                                             Online

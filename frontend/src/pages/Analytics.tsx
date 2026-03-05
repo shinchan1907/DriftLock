@@ -19,15 +19,23 @@ import client from '../api/client';
 const Analytics: React.FC = () => {
     const [summary, setSummary] = useState<any>(null);
     const [timeseries, setTimeseries] = useState<any[]>([]);
+    const [serviceDistribution, setServiceDistribution] = useState<any[]>([]);
+    const [hourlyTraffic, setHourlyTraffic] = useState<any[]>([]);
 
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const summaryRes = await client.get('/api/analytics/summary');
-                setSummary(summaryRes.data);
+                const [summaryRes, timeseriesRes, servicesRes, hourlyRes] = await Promise.all([
+                    client.get('/api/analytics/summary'),
+                    client.get('/api/analytics/timeseries'),
+                    client.get('/api/analytics/services'),
+                    client.get('/api/analytics/hourly')
+                ]);
 
-                const timeseriesRes = await client.get('/api/analytics/timeseries');
+                setSummary(summaryRes.data);
                 setTimeseries(timeseriesRes.data.days);
+                setServiceDistribution(servicesRes.data);
+                setHourlyTraffic(hourlyRes.data);
             } catch (err) {
                 console.error('Failed to fetch analytics', err);
             }
@@ -96,36 +104,43 @@ const Analytics: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Success vs Error Donut */}
+                {/* Service Load Pie */}
                 <div className="bg-slate-900/50 backdrop-blur-md border border-slate-800 rounded-[2.5rem] p-8 shadow-2xl">
                     <h3 className="text-xl font-bold text-white mb-8 flex items-center gap-2">
                         <Shield className="w-5 h-5 text-emerald-500" />
-                        Reliability Distribution
+                        Network Distribution
                     </h3>
-                    <div className="h-80 w-full flex items-center justify-center">
+                    <div className="h-48 w-full flex items-center justify-center">
                         <ResponsiveContainer width="100%" height="100%">
                             <PieChart>
                                 <Pie
-                                    data={[
-                                        { name: 'Success', value: summary?.successful || 0 },
-                                        { name: 'Errors', value: summary?.errors || 0 },
-                                        { name: 'No Change', value: summary?.no_change || 0 },
-                                    ]}
-                                    innerRadius={80}
-                                    outerRadius={100}
+                                    data={serviceDistribution.length > 0 ? serviceDistribution : [{ name: 'No Data', value: 1 }]}
+                                    innerRadius={60}
+                                    outerRadius={80}
                                     paddingAngle={5}
                                     dataKey="value"
                                 >
-                                    {COLORS.map((color, index) => (
-                                        <Cell key={`cell-${index}`} fill={color} stroke="none" />
+                                    {serviceDistribution.map((_, index) => (
+                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} stroke="none" />
                                     ))}
                                 </Pie>
-                                <Tooltip
-                                    contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }}
-                                />
-                                <Legend iconType="circle" wrapperStyle={{ paddingTop: '20px' }} />
+                                <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b', borderRadius: '12px' }} />
                             </PieChart>
                         </ResponsiveContainer>
+                    </div>
+                    <div className="mt-4 space-y-3">
+                        {serviceDistribution.slice(0, 3).map((s, i) => (
+                            <div key={s.name} className="flex items-center justify-between text-xs">
+                                <span className="text-slate-400 flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[i % COLORS.length] }} />
+                                    {s.name}
+                                </span>
+                                <span className="font-mono text-slate-500 flex items-center gap-1">
+                                    {s.value} updates
+                                    {s.is_tunnel && <Activity className="w-3 h-3 text-blue-500" title="Tunnel Mode" />}
+                                </span>
+                            </div>
+                        ))}
                     </div>
                 </div>
             </div>
@@ -139,10 +154,7 @@ const Analytics: React.FC = () => {
                     </h3>
                     <div className="h-64 w-full">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={[
-                                { hour: '00', count: 12 }, { hour: '04', count: 8 }, { hour: '08', count: 45 },
-                                { hour: '12', count: 32 }, { hour: '16', count: 56 }, { hour: '20', count: 24 }
-                            ]}>
+                            <BarChart data={hourlyTraffic}>
                                 <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" vertical={false} />
                                 <XAxis dataKey="hour" stroke="#64748b" fontSize={10} axisLine={false} tickLine={false} />
                                 <YAxis stroke="#64748b" fontSize={10} axisLine={false} tickLine={false} />
