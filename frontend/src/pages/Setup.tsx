@@ -10,7 +10,7 @@ const Setup: React.FC = () => {
 
     const fetchStatus = async () => {
         try {
-            const { data } = await client.get('/api/setup/status');
+            const { data } = await client.get('/setup/status');
             setStatus(data);
         } catch (err) {
             console.error('Failed to fetch setup status', err);
@@ -27,7 +27,7 @@ const Setup: React.FC = () => {
         setError('');
 
         try {
-            await client.post('/api/setup/cloudflare', { api_token: apiToken });
+            await client.post('/setup/cloudflare', { api_token: apiToken });
             await fetchStatus();
             setApiToken('');
         } catch (err: any) {

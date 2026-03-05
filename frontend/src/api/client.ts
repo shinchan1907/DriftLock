@@ -1,7 +1,7 @@
 import axios, { InternalAxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 
 const client = axios.create({
-    baseURL: '/',
+    baseURL: '/api',
     headers: {
         'Content-Type': 'application/json',
     },

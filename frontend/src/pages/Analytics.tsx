@@ -26,10 +26,10 @@ const Analytics: React.FC = () => {
         const fetchData = async () => {
             try {
                 const [summaryRes, timeseriesRes, servicesRes, hourlyRes] = await Promise.all([
-                    client.get('/api/analytics/summary'),
-                    client.get('/api/analytics/timeseries'),
-                    client.get('/api/analytics/services'),
-                    client.get('/api/analytics/hourly')
+                    client.get('/analytics/summary'),
+                    client.get('/analytics/timeseries'),
+                    client.get('/analytics/services'),
+                    client.get('/analytics/hourly')
                 ]);
 
                 setSummary(summaryRes.data);

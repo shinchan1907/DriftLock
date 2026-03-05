@@ -41,7 +41,7 @@ const Services: React.FC = () => {
 
     const fetchServices = async () => {
         try {
-            const { data } = await client.get('/api/services');
+            const { data } = await client.get('/services');
             setServices(data);
         } catch (err) {
             console.error('Failed to fetch services', err);
@@ -52,7 +52,7 @@ const Services: React.FC = () => {
 
     const fetchZones = async () => {
         try {
-            const { data } = await client.get('/api/setup/status');
+            const { data } = await client.get('/setup/status');
             if (data.configured && data.zones) {
                 setZones(data.zones);
             }
@@ -73,11 +73,11 @@ const Services: React.FC = () => {
                 ...newService,
                 port: newService.port ? parseInt(newService.port.toString()) : null
             };
-            const response = await client.post('/api/services', data);
+            const response = await client.post('/services', data);
 
             if (newService.tunnel_mode) {
                 try {
-                    await client.post(`/api/tunnels/${response.data.id}`, {
+                    await client.post(`/tunnels/${response.data.id}`, {
                         local_service_url: newService.local_service_url || `http://localhost:${newService.port || 80}`
                     });
                 } catch (tunnelErr: any) {
@@ -106,7 +106,7 @@ const Services: React.FC = () => {
 
     const deleteService = async (id: number) => {
         if (window.confirm('Are you sure you want to delete this service?')) {
-            await client.delete(`/api/services/${id}`);
+            await client.delete(`/services/${id}`);
             fetchServices();
         }
     };
@@ -116,12 +116,12 @@ const Services: React.FC = () => {
         try {
             if (service.tunnel_mode) {
                 if (window.confirm(`Disable Tunnel for ${service.name}? Service will revert to standard DDNS.`)) {
-                    await client.delete(`/api/tunnels/${service.id}`);
+                    await client.delete(`/tunnels/${service.id}`);
                 }
             } else {
                 const localUrl = window.prompt(`Enter your local service URL for ${service.name}:`, `http://localhost:${service.port || 3001}`);
                 if (localUrl) {
-                    await client.post(`/api/tunnels/${service.id}`, { local_service_url: localUrl });
+                    await client.post(`/tunnels/${service.id}`, { local_service_url: localUrl });
                 }
             }
             await fetchServices();

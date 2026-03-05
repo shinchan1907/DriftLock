@@ -18,7 +18,7 @@ const Login: React.FC = () => {
         setError('');
 
         try {
-            const response = await axios.post('/api/auth/login', { username, password });
+            const response = await axios.post('/auth/login', { username, password });
             login({ username: response.data.username }, response.data.access_token);
             navigate('/analytics');
         } catch (err: any) {

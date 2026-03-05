@@ -29,7 +29,7 @@ const Logs: React.FC = () => {
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const { data } = await client.get('/api/logs', {
+            const { data } = await client.get('/logs', {
                 params: {
                     page,
                     per_page: 20,
@@ -51,7 +51,7 @@ const Logs: React.FC = () => {
 
     useEffect(() => {
         const fetchServices = async () => {
-            const { data } = await client.get('/api/services');
+            const { data } = await client.get('/services');
             setServices(data);
         };
         fetchServices();

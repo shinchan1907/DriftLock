@@ -20,7 +20,7 @@ const Download: React.FC = () => {
 
     useEffect(() => {
         const fetchServices = async () => {
-            const { data } = await client.get('/api/services');
+            const { data } = await client.get('/services');
             setServices(data);
         };
         fetchServices();
@@ -29,7 +29,7 @@ const Download: React.FC = () => {
     const handleDownload = async () => {
         if (!selectedService) return;
         try {
-            const response = await client.get(`/api/agents/download?service_id=${selectedService}&platform=${platform}`, {
+            const response = await client.get(`/agents/download?service_id=${selectedService}&platform=${platform}`, {
                 responseType: 'blob'
             });
 
@@ -147,7 +147,7 @@ const Download: React.FC = () => {
                                 <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">Direct Download Link (Browser/Curl)</p>
                                 <div className="bg-slate-950 border border-slate-800 rounded-xl p-3 relative group">
                                     <code className="text-[10px] text-blue-400 break-all">
-                                        {window.location.origin}/api/agents/download?service_id={selectedService || 'ID'}&platform={platform}&query_token={localStorage.getItem('access_token')?.substring(0, 10)}...
+                                        {window.location.origin}/agents/download?service_id={selectedService || 'ID'}&platform={platform}&query_token={localStorage.getItem('access_token')?.substring(0, 10)}...
                                     </code>
                                     <button
                                         onClick={() => {
@@ -156,7 +156,7 @@ const Download: React.FC = () => {
                                                 return;
                                             }
                                             const token = localStorage.getItem('access_token');
-                                            const url = `${window.location.origin}/api/agents/download?service_id=${selectedService}&platform=${platform}&query_token=${token}`;
+                                            const url = `${window.location.origin}/agents/download?service_id=${selectedService}&platform=${platform}&query_token=${token}`;
                                             navigator.clipboard.writeText(url);
                                             setCopied(true);
                                             setTimeout(() => setCopied(false), 2000);
