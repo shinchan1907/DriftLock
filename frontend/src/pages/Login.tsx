@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Anchor, Lock, ArrowRight, ShieldCheck, Loader2 } from 'lucide-react';
-import axios from 'axios';
+import client from '../api/client';
 import { useAuthStore } from '../store/auth';
 
 const Login: React.FC = () => {
@@ -18,7 +18,7 @@ const Login: React.FC = () => {
         setError('');
 
         try {
-            const response = await axios.post('/auth/login', { username, password });
+            const response = await client.post('/auth/login', { username, password });
             login({ username: response.data.username }, response.data.access_token);
             navigate('/analytics');
         } catch (err: any) {

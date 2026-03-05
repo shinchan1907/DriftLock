@@ -5,14 +5,15 @@ services:
     restart: unless-stopped
     ports:
       - "80:80"
-      - "443:443"
     environment:
       - ADMIN_USERNAME=${ADMIN_USERNAME:-admin}
       - ADMIN_PASSWORD=${ADMIN_PASSWORD:-changeme}
-      - SECRET_KEY=${SECRET_KEY:-changethisinproduction}
-      - ENCRYPTION_SALT=${ENCRYPTION_SALT:-changethisinproduction}
+      - SECRET_KEY=${SECRET_KEY:-change-this-secret-key-min-32-chars!!}
+      - ENCRYPTION_SALT=${ENCRYPTION_SALT:-change-this-16chr}
       - DOMAIN=${DOMAIN:-localhost}
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost}
+      - SERVER_URL=${SERVER_URL:-http://localhost}
+      - DATABASE_URL=sqlite+aiosqlite:////app/data/driftlock.db
     volumes:
       - driftlock_data:/app/data
 

@@ -1,49 +1,48 @@
-# Stage 1 — frontend builder
+# ─── Stage 1: Build React frontend ───────────────────────────
 FROM node:20-alpine AS frontend-builder
 WORKDIR /app
 COPY frontend/package*.json ./
-RUN npm ci
+RUN npm ci --silent
 COPY frontend/ ./
 RUN npm run build
-# Output: /app/dist/ contains the built React SPA
 
-# Stage 2 — Python builder
+# ─── Stage 2: Install Python dependencies ─────────────────────
 FROM python:3.11-slim AS backend-builder
 WORKDIR /app
-RUN apt-get update && apt-get install -y build-essential
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential curl \
+    && rm -rf /var/lib/apt/lists/*
 COPY backend/requirements.txt .
 RUN pip install --no-cache-dir --user -r requirements.txt
 
-# Stage 3 — final image
+# ─── Stage 3: Final all-in-one image ──────────────────────────
 FROM python:3.11-slim AS final
+WORKDIR /app
 
-# Install nginx and supervisor
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     nginx \
     supervisor \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && mkdir -p /var/log/supervisor \
+    && mkdir -p /app/data \
+    && rm -f /etc/nginx/sites-enabled/default
 
-# Environment variables for Python to use .local packages
+COPY --from=backend-builder /root/.local /root/.local
 ENV PATH=/root/.local/bin:$PATH
 ENV PYTHONPATH=/app
 
-# Copy Python packages from builder
-COPY --from=backend-builder /root/.local /root/.local
-
-# Copy backend source
 COPY backend/app /app/app
+COPY --from=frontend-builder /app/dist /var/www/html
 
-# Copy built React frontend into nginx web root
-COPY --from=frontend-builder /app/dist /var/www/html/driftlock
-
-# Copy configs
-COPY docker/nginx.conf /etc/nginx/nginx.conf
 COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+COPY docker/nginx.conf /etc/nginx/sites-available/driftlock
 
-# Create data directory for SQLite
-RUN mkdir -p /app/data
+RUN ln -s /etc/nginx/sites-available/driftlock \
+    /etc/nginx/sites-enabled/driftlock
 
-EXPOSE 80 443
+VOLUME ["/app/data"]
+EXPOSE 80
 
-CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
+CMD ["/usr/bin/supervisord", "-n", "-c", \
+    "/etc/supervisor/conf.d/supervisord.conf"]
